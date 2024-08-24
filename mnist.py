@@ -64,17 +64,16 @@ def train(
         unlogged_steps += 1
         if verbose or unlogged_steps >= len(train_loader) / 10:
             unlogged_steps = 0
-            if rank == 0:
-                _LOGGER.info(
-                    "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                        rank,
-                        epoch,
-                        batch_idx * batch_size,
-                        data_len,  # type: ignore
-                        100.0 * batch_idx * batch_size / data_len,
-                        loss.item(),
-                    )
+            _LOGGER.info(
+                "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    rank,
+                    epoch,
+                    batch_idx * batch_size,
+                    data_len,  # type: ignore
+                    100.0 * batch_idx * batch_size / data_len,
+                    loss.item(),
                 )
+            )
 
 
 @torch.no_grad()
@@ -115,7 +114,7 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
     accuracy = 100.0 * correct / data_len
     if rank == 0 or not aggregate_test_results:
         _LOGGER.info(
-            "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
+            "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
                 rank, test_loss, correct, data_len, accuracy
             )
         )
