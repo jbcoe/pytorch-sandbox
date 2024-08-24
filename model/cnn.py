@@ -1,13 +1,13 @@
 """CNN model for character recognition."""
 
-import dataclasses
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 
-@dataclasses.dataclass
+@dataclass(slots=True, frozen=True)
 class CNNConfig:
     """Configuration for the CNN model."""
 

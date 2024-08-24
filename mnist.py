@@ -8,11 +8,11 @@ Command line arguments are parsed using the wonderful tyro package.
 For usage, run `python mnist.py --help`.
 """
 
-import dataclasses
 import datetime
 import enum
 import logging
 import os
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -121,7 +121,7 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
     return accuracy
 
 
-@dataclasses.dataclass
+@dataclass(slots=True, frozen=True)
 class DDPConfig:
     """Configuration for DDP parallelism."""
 
@@ -141,7 +141,7 @@ class LogLevel(enum.IntEnum):
     CRITICAL = logging.CRITICAL
 
 
-@dataclasses.dataclass
+@dataclass(slots=True, frozen=True)
 class CompileConfig:
     """Configuration for model compilation."""
 
@@ -150,7 +150,7 @@ class CompileConfig:
     backend: str = "inductor"
 
 
-@dataclasses.dataclass
+@dataclass(slots=True, frozen=True)
 class Config:
     """Configuration for training and evaluating the model."""
 
@@ -167,7 +167,7 @@ class Config:
     training_data_fraction: float = 1.0
     shuffle: bool = True
     log_level: LogLevel = LogLevel.INFO
-    cnn_config: cnn.CNNConfig = dataclasses.field(default_factory=cnn.CNNConfig)
+    cnn_config: cnn.CNNConfig = field(default_factory=cnn.CNNConfig)
     parallel: DDPConfig | None = None
     compile: CompileConfig | None = None
     verbose: bool = False
