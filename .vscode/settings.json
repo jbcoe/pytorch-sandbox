@@ -4,5 +4,10 @@
     "**/__pycache__": true,
     ".DATA": true,
     ".CKPT": true,
-  }
+  },
+  "editor.rulers": [
+    80,
+    120
+  ],
+  "black-formatter.importStrategy": "fromEnvironment"
 }

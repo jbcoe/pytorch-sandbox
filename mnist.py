@@ -11,19 +11,24 @@ For usage, run `python mnist.py --help`.
 import dataclasses
 import datetime
 import enum
+import itertools
+import logging
+import os
+from pathlib import Path
+from typing import Any, Literal
+
 import torch
+import torch.distributed as dist
 import torch.nn.functional as F
 import torch.optim as optim
-import logging
-from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
-from torch.utils.data import DataLoader
-from torch.optim.optimizer import Optimizer
 import tyro
-from typing import Literal
-from pathlib import Path
+from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
+from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import model.cnn as cnn
 import data.mnist as mnist_data
+import model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +36,7 @@ device = torch.device("mps")
 
 
 def train(
+    rank: int,
     model: torch.nn.Module,
     device: torch.device,
     train_loader: DataLoader,
@@ -44,7 +50,7 @@ def train(
 
     _LOGGER.info(f"Train Epoch: {epoch}")
     unlogged_data_count = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target) in zip(itertools.count(start=1), train_loader):
         data, target = data.to(device), target.to(device)
 
         optimizer.zero_grad()
@@ -67,7 +73,7 @@ def train(
             unlogged_data_count = 0
 
 
-def test(model, device, test_loader) -> float:
+def test(rank: int, model, device, test_loader) -> float:
     """Test the model on the test data."""
     model.eval()
     model.to(device)
@@ -91,6 +97,15 @@ def test(model, device, test_loader) -> float:
         )
     )
     return accuracy
+
+
+@dataclasses.dataclass
+class DDPConfig:
+    """Configuration for DDP parallelism."""
+
+    world_size: int = 4
+    hostname: str = "localhost"
+    port: str = "12345"
 
 
 class LogLevel(enum.IntEnum):
@@ -128,29 +143,52 @@ class Config:
     data_dir: str = ".DATA"
     training_data_fraction: float = 1.0
     log_level: LogLevel = LogLevel.INFO
-    compile: CompileConfig | None = None
     cnn_config: cnn.CNNConfig = dataclasses.field(default_factory=cnn.CNNConfig)
+    parallel: DDPConfig | None = None
+    compile: CompileConfig | None = None
 
 
-def create_data_loaders(config: Config):
+def create_data_loaders(rank: int, config: Config):
     """Load MNIST data and return training and test data loaders."""
     mnist_train, mnist_test = mnist_data.load_mnist(config)
 
+    match config.parallel:
+        case None:
+            pass
+        case DDPConfig():
+            mnist_train = DistributedSampler(
+                mnist_train, num_replicas=config.parallel.world_size, rank=rank, seed=config.seed
+            )
+            mnist_test = DistributedSampler(
+                mnist_test, num_replicas=config.parallel.world_size, rank=rank, seed=config.seed
+            )
+        case _:
+            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+
     training_data_len = int(config.training_data_fraction * len(mnist_train))
     train_loader = StatefulDataLoader(
-        mnist_train,
+        mnist_train.dataset,
         sampler=torch.utils.data.SubsetRandomSampler(range(0, training_data_len)),
         num_workers=config.num_workers,
         batch_size=config.batch_size,
     )
-    test_loader = StatefulDataLoader(mnist_test, batch_size=config.batch_size)
+    test_loader = StatefulDataLoader(mnist_test.dataset, batch_size=config.batch_size)
     return train_loader, training_data_len, test_loader
 
 
 def create_model_and_optimizer(config: Config):
     """Create the model and optimizer using the given config."""
-    model = cnn.Net(config=config.cnn_config)
+    model: Any = cnn.Net(config=config.cnn_config)
     optimizer = optim.Adadelta(model.parameters(), lr=config.learning_rate)
+
+    match config.parallel:
+        case None:
+            pass
+        case DDPConfig():
+            model = torch.nn.parallel.DistributedDataParallel(model)
+        case _:
+            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+
     if config.compile:
         model = torch.compile(
             model,
@@ -160,21 +198,51 @@ def create_model_and_optimizer(config: Config):
     return model, optimizer
 
 
+def _ddp_main(rank: int, config: Config):
+    """Entry point for DDP parallelism. Manages process group initialization and cleanup."""
+    assert isinstance(config.parallel, DDPConfig)
+
+    logging.basicConfig(level=config.log_level)
+
+    os.environ["MASTER_ADDR"] = config.parallel.hostname
+    os.environ["MASTER_PORT"] = config.parallel.port
+
+    try:
+        dist.init_process_group(backend="gloo", rank=rank, world_size=config.parallel.world_size)
+        _main(rank, config)
+    finally:
+        dist.destroy_process_group()
+
+
 def main(config: Config):
-    """Training and evaluation loop."""
+    """Main entry point."""
+    match config.parallel:
+        case None:
+            _main(0, config)
+        case DDPConfig():
+            torch.multiprocessing.spawn(_ddp_main, args=(config,), nprocs=config.parallel.world_size)
+        case _:
+            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+
+
+def _main(rank: int, config: Config):
+    """Single process training and evaluation loop."""
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
 
-    train_loader, training_data_len, test_loader = create_data_loaders(config)
+    train_loader, training_data_len, test_loader = create_data_loaders(rank, config)
 
     model, optimizer = create_model_and_optimizer(config)
 
     now = int(datetime.datetime.now(datetime.UTC).timestamp())
 
     for epoch in range(1, config.epochs + 1):
-        train(model, device, train_loader, optimizer, epoch, training_data_len)
-        test(model, device, test_loader)
-        if config.ckpt:
+        train(rank, model, device, train_loader, optimizer, epoch, training_data_len)
+        test(rank, model, device, test_loader)
+        if rank == 0 and config.ckpt:
+            # All processes should see the same parameters as they all start from same
+            # random parameters and gradients are synchronized in backward passes.
+            # Therefore, saving it in one process is sufficient.
             torch.save(model.state_dict(), Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
 
 

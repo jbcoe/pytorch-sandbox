@@ -62,3 +62,8 @@ repos:
   - id: interrogate
     args: [--fail-under=95]
     pass_filenames: false  # needed if excluding files with pyproject.toml or setup.cfg
+
+- repo: https://github.com/pycqa/isort
+  rev: 5.13.2
+  hooks:
+  - id: isort

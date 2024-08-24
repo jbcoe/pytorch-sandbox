@@ -1,7 +1,8 @@
 """MNIST data set."""
 
-from torchvision import datasets, transforms  # type: ignore
 from typing import Protocol
+
+from torchvision import datasets, transforms  # type: ignore
 
 
 class MNISTConfig(Protocol):
