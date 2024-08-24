@@ -11,7 +11,6 @@ For usage, run `python mnist.py --help`.
 import dataclasses
 import datetime
 import enum
-import itertools
 import logging
 import os
 from pathlib import Path
@@ -42,18 +41,19 @@ def train(
     train_loader: DataLoader,
     optimizer: Optimizer,
     epoch: int,
-    training_data_len: int,
+    verbose: bool = False,
 ):
     """Train the model for one epoch."""
     model.train()
     model.to(device)
 
-    _LOGGER.info(f"{rank}: Train Epoch: {epoch}")
-    unlogged_data_count = 0
-    for batch_idx, (data, target) in zip(itertools.count(start=1), train_loader):
-        data, target = data.to(device), target.to(device)
+    data_len = len(train_loader.sampler) if train_loader.sampler else len(train_loader.dataset)  # type: ignore
+    batch_size = train_loader.batch_size or 1
 
-        # _LOGGER.debug(f"{rank}: Train Epoch: {epoch}, target: {target}")
+    _LOGGER.info(f"{rank}: Train Epoch: {epoch}")
+    unlogged_steps = 0
+    for batch_idx, (data, target) in enumerate(train_loader):
+        data, target = data.to(device), target.to(device)
 
         optimizer.zero_grad()
         output = model(data)
@@ -61,44 +61,64 @@ def train(
         loss.backward()
         optimizer.step()
 
-        unlogged_data_count += data.size(0)
-        if unlogged_data_count >= training_data_len / 10:
-            _LOGGER.info(
-                "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    rank,
-                    epoch,
-                    batch_idx * len(data),
-                    training_data_len,
-                    100.0 * batch_idx * len(data) / training_data_len,
-                    loss.item(),
+        unlogged_steps += 1
+        if verbose or unlogged_steps >= len(train_loader) / 10:
+            unlogged_steps = 0
+            if rank == 0:
+                _LOGGER.info(
+                    "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                        rank,
+                        epoch,
+                        batch_idx * batch_size,
+                        data_len,  # type: ignore
+                        100.0 * batch_idx * batch_size / data_len,
+                        loss.item(),
+                    )
                 )
-            )
-            unlogged_data_count = 0
 
 
-def test(rank: int, model, device, test_loader) -> float:
+@torch.no_grad()
+def test(rank: int, model, device, test_loader, aggregate_test_results=False) -> float:
     """Test the model on the test data."""
     model.eval()
     model.to(device)
 
+    data_len = len(test_loader.sampler) if test_loader.sampler else len(test_loader.dataset)  # type: ignore
+
     test_loss = 0.0
-    correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, reduction="sum").item()  # sum up batch loss
-            pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
+    correct = 0.0
 
-    test_loss /= len(test_loader.dataset)
+    for data, target in test_loader:
+        data, target = data.to(device), target.to(device)
+        output = model(data)
+        test_loss += F.nll_loss(output, target, reduction="sum").item()
+        pred = output.argmax(dim=1, keepdim=True)  # get the index of the max log-probability
+        correct += pred.eq(target.view_as(pred)).sum().item()
 
-    accuracy = 100.0 * correct / len(test_loader.dataset)
-    _LOGGER.info(
-        "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
-            rank, test_loss, correct, len(test_loader.dataset), accuracy
+    test_loss /= data_len
+
+    _LOGGER.debug(f"{rank}: Data Length: {data_len} Correct: {correct}")
+
+    if aggregate_test_results:
+        all_test_loss = torch.tensor([test_loss], device=device)
+        dist.all_reduce(all_test_loss, op=dist.ReduceOp.SUM)
+        test_loss = all_test_loss.item()
+
+        all_data_len = torch.tensor([data_len], device=device, dtype=torch.int)
+        dist.all_reduce(all_data_len, op=dist.ReduceOp.SUM)
+        data_len = all_data_len.item()  # type: ignore
+
+        all_correct = torch.tensor([correct], device=device)
+        dist.all_reduce(all_correct, op=dist.ReduceOp.SUM)
+        correct = all_correct.item()
+
+    accuracy = 100.0 * correct / data_len
+    if rank == 0 or not aggregate_test_results:
+        _LOGGER.info(
+            "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
+                rank, test_loss, correct, data_len, accuracy
+            )
         )
-    )
     return accuracy
 
 
@@ -109,6 +129,7 @@ class DDPConfig:
     world_size: int = 4
     hostname: str = "localhost"
     port: str = "12345"
+    aggregate_test_results: bool = True
 
 
 class LogLevel(enum.IntEnum):
@@ -150,6 +171,7 @@ class Config:
     cnn_config: cnn.CNNConfig = dataclasses.field(default_factory=cnn.CNNConfig)
     parallel: DDPConfig | None = None
     compile: CompileConfig | None = None
+    verbose: bool = False
 
 
 def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, int, DataLoader]:
@@ -250,8 +272,24 @@ def _main(rank: int, config: Config):
     now = int(datetime.datetime.now(datetime.UTC).timestamp())
 
     for epoch in range(1, config.epochs + 1):
-        train(rank, model, device, train_loader, optimizer, epoch, training_data_len)
-        test(rank, model, device, test_loader)
+        train(
+            rank,
+            model,
+            device,
+            train_loader,
+            optimizer,
+            epoch,
+            verbose=config.verbose,
+        )
+        if config.parallel:
+            dist.barrier()
+        test(
+            rank,
+            model,
+            device,
+            test_loader,
+            aggregate_test_results=config.parallel and config.parallel.aggregate_test_results,
+        )
         if rank == 0 and config.ckpt:
             # All processes should see the same parameters as they all start from same
             # random parameters and gradients are synchronized in backward passes.
