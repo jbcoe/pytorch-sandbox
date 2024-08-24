@@ -1,0 +1,57 @@
+# .pre-commit-config.yaml
+# ========================
+#
+# pre-commit clean
+# pre-commit install
+# pre-commit install-hooks
+#
+# precommit hooks installation
+#
+# - pre-commit autoupdate
+#
+# - pre-commit run black
+#
+# continuous integration
+# ======================
+#
+# - pre-commit run --all-files
+#
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.5.0
+  hooks:
+  - id: check-yaml
+  - id: end-of-file-fixer
+  - id: debug-statements
+  - id: forbid-submodules
+  - id: requirements-txt-fixer
+  - id: trailing-whitespace
+
+- repo: https://github.com/PyCQA/flake8
+  rev: 7.0.0
+  hooks:
+  - id: flake8
+
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.2.4
+  hooks:
+  - id: codespell
+    additional_dependencies:
+      - tomli
+
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.17.0
+  hooks:
+  - id: pyupgrade
+
+- repo: https://github.com/psf/black-pre-commit-mirror
+  rev: 24.8.0
+  hooks:
+  - id: black
+
+- repo: https://github.com/asottile/yesqa
+  rev: v1.5.0
+  hooks:
+  - id: yesqa

@@ -1,0 +1,23 @@
+[project]
+name = "pytorch-sandbox"
+description = "A place to play with pytorch."
+
+[project.urls]
+"GitHub" = "https://github.com/jbcoe/pytorch-sandbox"
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.pyright]
+pythonVersion = "3.12"
+
+[tool.coverage.run]
+concurrency = ["thread", "multiprocessing"]
+source = ["."]
