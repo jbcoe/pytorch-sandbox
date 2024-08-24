@@ -1,4 +1,12 @@
-"""MNIST character recognition following https://github.com/pytorch/examples/blob/main/mnist/main.py"""
+"""
+MNIST character recognition following https://github.com/pytorch/examples/blob/main/mnist/main.py.
+
+Uses MNIST dataset to train a simple CNN model for character recognition.
+
+Command line arguments are parsed using the wonderful tyro package.
+
+For usage, run `python mnist.py --help`.
+"""
 
 import dataclasses
 import datetime
@@ -23,6 +31,8 @@ device = torch.device("mps")
 
 @dataclasses.dataclass
 class CNNConfig:
+    """Configuration for the CNN model."""
+
     conv1_channels: int = 32
     conv2_channels: int = 64
     dropout1: float = 0.25
@@ -32,7 +42,13 @@ class CNNConfig:
 
 
 class Net(nn.Module):
+    """CNN model for MNIST character recognition.
+
+    Input is a 28x28 image, output is a log-probability for each of the 10 classes.
+    """
+
     def __init__(self, config: CNNConfig | None = None):
+        """Initialize the model with the given configuration."""
         config = config or CNNConfig()
         super().__init__()
         self.conv1 = nn.Conv2d(1, config.conv1_channels, 3, 1)
@@ -46,7 +62,8 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(linear_input_size, config.linear)
         self.fc2 = nn.Linear(config.linear, 10)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass."""
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
@@ -70,6 +87,7 @@ def train(
     epoch: int,
     training_data_len: int,
 ):
+    """Train the model for one epoch."""
     model.train()
     model.to(device)
 
@@ -99,6 +117,7 @@ def train(
 
 
 def test(model, device, test_loader) -> float:
+    """Test the model on the test data."""
     model.eval()
     model.to(device)
 
@@ -124,6 +143,8 @@ def test(model, device, test_loader) -> float:
 
 
 class LogLevel(enum.IntEnum):
+    """Log levels for the logger as an enum."""
+
     DEBUG = logging.DEBUG
     INFO = logging.INFO
     WARNING = logging.WARNING
@@ -133,6 +154,8 @@ class LogLevel(enum.IntEnum):
 
 @dataclasses.dataclass
 class CompileConfig:
+    """Configuration for model compilation."""
+
     fullgraph: bool = False
     mode: str = "reduce-overhead"
     backend: str = "inductor"
@@ -140,6 +163,8 @@ class CompileConfig:
 
 @dataclasses.dataclass
 class Config:
+    """Configuration for training and evaluating the model."""
+
     learning_rate: float = 0.01
     seed: int = 42
     epochs: int = 5
@@ -173,6 +198,7 @@ def create_data_loaders(config: Config):
 
 
 def create_model_and_optimizer(config: Config):
+    """Create the model and optimizer using the given config."""
     model = Net(config=config.cnn_config)
     optimizer = optim.Adadelta(model.parameters(), lr=config.learning_rate)
     if config.compile:
@@ -199,10 +225,7 @@ def main(config: Config):
         train(model, device, train_loader, optimizer, epoch, training_data_len)
         test(model, device, test_loader)
         if config.ckpt:
-            torch.save(
-                model.state_dict(),
-                Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt",
-            )
+            torch.save(model.state_dict(), Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
 
 
 if __name__ == "__main__":
