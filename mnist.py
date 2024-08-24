@@ -173,12 +173,11 @@ class Config:
     verbose: bool = False
 
 
-def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, int, DataLoader]:
+def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoader]:
     """Load MNIST data and return training and test data loaders."""
     mnist_train, mnist_test = mnist_data.load_mnist(config)
 
-    assert config.training_data_fraction == 1.0
-    training_data_len = int(len(mnist_train) * config.training_data_fraction)
+    assert config.training_data_fraction == 1.0, "Fractional training data not implemented"
 
     match config.parallel:
         case None:
@@ -207,7 +206,7 @@ def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, int, Dat
         batch_size=config.batch_size,
     )
     test_loader = StatefulDataLoader(mnist_test, sampler=test_sampler, batch_size=config.batch_size)
-    return train_loader, training_data_len, test_loader
+    return train_loader, test_loader
 
 
 def create_model_and_optimizer(config: Config):
@@ -264,11 +263,15 @@ def _main(rank: int, config: Config):
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
 
-    train_loader, training_data_len, test_loader = create_data_loaders(rank, config)
+    train_loader, test_loader = create_data_loaders(rank, config)
 
     model, optimizer = create_model_and_optimizer(config)
 
     now = int(datetime.datetime.now(datetime.UTC).timestamp())
+
+    if rank == 0 and config.ckpt:
+        with open(Path(config.ckpt) / f"mnist_{now}_config.txt", "w") as f:
+            f.write(str(config))
 
     for epoch in range(1, config.epochs + 1):
         train(

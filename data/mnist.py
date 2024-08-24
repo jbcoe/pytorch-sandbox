@@ -8,7 +8,8 @@ from torchvision import datasets, transforms  # type: ignore
 class MNISTConfig(Protocol):
     """Configuration for the MNIST data set."""
 
-    data_dir: str
+    @property
+    def data_dir(self) -> str: ...
 
 
 def load_mnist(config: MNISTConfig) -> tuple[datasets.MNIST, datasets.MNIST]:
