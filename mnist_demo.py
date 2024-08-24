@@ -58,15 +58,12 @@ def main(config: DemoConfig):
             continue
 
         print(f"{mnist_data.to_ascii_art(data.squeeze(0))}")
-        print()
 
         input()
         print(f"Predicted: {pred.item()}")
-        print()
 
         input()
         print(f"Actual: {target}")
-        print()
 
         input()
         call("clear" if os.name == "posix" else "cls")
