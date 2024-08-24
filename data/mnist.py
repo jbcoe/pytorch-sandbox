@@ -11,7 +11,7 @@ class MNISTConfig(Protocol):
 
     @property
     def data_dir(self) -> str:
-        """Data directory for downloaded MANIST data"""
+        """Data directory for downloaded MNIST data"""
         pass
 
 
