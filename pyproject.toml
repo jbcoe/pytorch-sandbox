@@ -26,3 +26,4 @@ source = ["."]
 verbose = "2"
 ignore-init-method = false
 omit-covered-files = false
+ignore-init-module = true
