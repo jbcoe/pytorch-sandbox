@@ -48,10 +48,12 @@ def train(
     model.train()
     model.to(device)
 
-    _LOGGER.info(f"Train Epoch: {epoch}")
+    _LOGGER.info(f"{rank}: Train Epoch: {epoch}")
     unlogged_data_count = 0
     for batch_idx, (data, target) in zip(itertools.count(start=1), train_loader):
         data, target = data.to(device), target.to(device)
+
+        # _LOGGER.debug(f"{rank}: Train Epoch: {epoch}, target: {target}")
 
         optimizer.zero_grad()
         output = model(data)
@@ -62,7 +64,8 @@ def train(
         unlogged_data_count += data.size(0)
         if unlogged_data_count >= training_data_len / 10:
             _LOGGER.info(
-                "Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
+                    rank,
                     epoch,
                     batch_idx * len(data),
                     training_data_len,
@@ -92,8 +95,8 @@ def test(rank: int, model, device, test_loader) -> float:
 
     accuracy = 100.0 * correct / len(test_loader.dataset)
     _LOGGER.info(
-        "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
-            test_loss, correct, len(test_loader.dataset), accuracy
+        "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n".format(
+            rank, test_loss, correct, len(test_loader.dataset), accuracy
         )
     )
     return accuracy
@@ -142,37 +145,47 @@ class Config:
     ckpt: str = ".CKPT"
     data_dir: str = ".DATA"
     training_data_fraction: float = 1.0
+    shuffle: bool = True
     log_level: LogLevel = LogLevel.INFO
     cnn_config: cnn.CNNConfig = dataclasses.field(default_factory=cnn.CNNConfig)
     parallel: DDPConfig | None = None
     compile: CompileConfig | None = None
 
 
-def create_data_loaders(rank: int, config: Config):
+def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, int, DataLoader]:
     """Load MNIST data and return training and test data loaders."""
     mnist_train, mnist_test = mnist_data.load_mnist(config)
 
+    assert config.training_data_fraction == 1.0
+    training_data_len = int(len(mnist_train) * config.training_data_fraction)
+
     match config.parallel:
         case None:
-            pass
+            train_sampler, test_sampler = None, None
         case DDPConfig():
-            mnist_train = DistributedSampler(
-                mnist_train, num_replicas=config.parallel.world_size, rank=rank, seed=config.seed
+            train_sampler = DistributedSampler(
+                mnist_train,
+                num_replicas=config.parallel.world_size,
+                rank=rank,
+                seed=config.seed,
+                shuffle=config.shuffle,
             )
-            mnist_test = DistributedSampler(
-                mnist_test, num_replicas=config.parallel.world_size, rank=rank, seed=config.seed
+            test_sampler = DistributedSampler(
+                mnist_test,
+                num_replicas=config.parallel.world_size,
+                rank=rank,
+                seed=config.seed,
             )
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
-    training_data_len = int(config.training_data_fraction * len(mnist_train))
     train_loader = StatefulDataLoader(
-        mnist_train.dataset,
-        sampler=torch.utils.data.SubsetRandomSampler(range(0, training_data_len)),
+        mnist_train,
+        sampler=train_sampler,
         num_workers=config.num_workers,
         batch_size=config.batch_size,
     )
-    test_loader = StatefulDataLoader(mnist_test.dataset, batch_size=config.batch_size)
+    test_loader = StatefulDataLoader(mnist_test, sampler=test_sampler, batch_size=config.batch_size)
     return train_loader, training_data_len, test_loader
 
 
