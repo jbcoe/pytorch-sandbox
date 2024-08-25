@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import data.mnist as mnist_data
+import data.mnist_data as mnist_data
 import model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
@@ -296,7 +296,15 @@ def _main(rank: int, config: Config):
             # All processes should see the same parameters as they all start from same
             # random parameters and gradients are synchronized in backward passes.
             # Therefore, saving it in one process is sufficient.
-            torch.save(model.state_dict(), Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
+            # DDP has model state dict in model.module.
+            match config.parallel:
+                case None:
+                    model_state_dict = model.state_dict()
+                case DDPConfig():
+                    model_state_dict = model.module.state_dict()
+                case _:
+                    raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+            torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
 
 
 if __name__ == "__main__":

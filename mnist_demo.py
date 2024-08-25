@@ -10,7 +10,7 @@ from subprocess import call
 import torch
 import tyro
 
-import data.mnist as mnist_data
+import data.mnist_data as mnist_data
 import model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,23 +42,30 @@ def main(config: DemoConfig):
     logging.basicConfig(level=config.log_level)
     model = cnn.Net()
     state_dict = torch.load(config.ckpt, weights_only=True)
-    model.load_state_dict(state_dict)
+    try:
+        model.load_state_dict(state_dict)
+    except RuntimeError as e:
+        _LOGGER.error("Error loading model: %s", e)
+        _LOGGER.error("Model state dict keys: %s", [k for k in state_dict.keys()])
+        _LOGGER.error("Model keys: %s", [k for k in model.state_dict().keys()])
+        return -1
 
     _LOGGER.info("Model loaded from %s", config.ckpt)
 
     # Load the MNIST data set
     _, mnist_test = mnist_data.load_mnist(config)
 
-    for data, target in itertools.chain(mnist_test):
-
+    num_images = len(mnist_test)
+    for idx, (data, target) in enumerate(itertools.chain(mnist_test)):
         output = model(data.unsqueeze(0))
         pred = output.argmax(dim=1, keepdim=True)
 
         if pred.item() == target and config.only_errors:
             continue
 
-        print(f"{mnist_data.to_ascii_art(data.squeeze(0))}")
+        print(f"{mnist_data.to_ascii_art(data.squeeze(0))}\n")
 
+        print(f"Image: {idx+1}/{num_images}")
         input()
         print(f"Predicted: {pred.item()}")
 
