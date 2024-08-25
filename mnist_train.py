@@ -14,7 +14,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 import torch.distributed
@@ -28,6 +28,7 @@ import tyro
 from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
 )
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
@@ -232,18 +233,19 @@ def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoad
 
 def create_model_and_optimizer(config: Config):
     """Create the model and optimizer using the given config."""
-    model: Any = cnn.Net(config=config.cnn_config)
-    optimizer = optim.Adadelta(model.parameters(), lr=config.learning_rate)
+    model: torch.nn.Module | FSDP | DDP = cnn.Net(config=config.cnn_config)
 
     match config.parallel:
         case None:
             pass
         case DDPConfig():
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = DDP(model)
         case FSDPConfig():
             model = FSDP(model, device_id=torch.device(config.device))
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+
+    optimizer = optim.Adadelta(model.parameters(), lr=config.learning_rate)
 
     if config.compile:
         model = torch.compile(
