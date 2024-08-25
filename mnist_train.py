@@ -17,10 +17,17 @@ from pathlib import Path
 from typing import Any, Literal
 
 import torch
+import torch.distributed
 import torch.distributed as dist
+import torch.distributed.checkpoint as dcp
+import torch.distributed.checkpoint.state_dict
+import torch.distributed.fsdp
 import torch.nn.functional as F
 import torch.optim as optim
 import tyro
+from torch.distributed.fsdp.fully_sharded_data_parallel import (
+    FullyShardedDataParallel as FSDP,
+)
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
@@ -122,13 +129,27 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
 
 
 @dataclass(slots=True, frozen=True)
-class DDPConfig:
-    """Configuration for DDP parallelism."""
+class LocalParallelConfig:
+    """Configuration for local parallelism."""
 
     world_size: int = 4
     hostname: str = "localhost"
     port: str = "12345"
     aggregate_test_results: bool = True
+
+
+@dataclass(slots=True, frozen=True)
+class DDPConfig(LocalParallelConfig):
+    """Configuration for DDP parallelism."""
+
+    pass
+
+
+@dataclass(slots=True, frozen=True)
+class FSDPConfig(LocalParallelConfig):
+    """Configuration for FSDP parallelism."""
+
+    pass
 
 
 class LogLevel(enum.IntEnum):
@@ -168,7 +189,7 @@ class Config:
     shuffle: bool = True
     log_level: LogLevel = LogLevel.INFO
     cnn_config: cnn.CNNConfig = field(default_factory=cnn.CNNConfig)
-    parallel: DDPConfig | None = None
+    parallel: DDPConfig | FSDPConfig | None = None
     compile: CompileConfig | None = None
     verbose: bool = False
 
@@ -182,7 +203,7 @@ def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoad
     match config.parallel:
         case None:
             train_sampler, test_sampler = None, None
-        case DDPConfig():
+        case DDPConfig() | FSDPConfig():
             train_sampler = DistributedSampler(
                 mnist_train,
                 num_replicas=config.parallel.world_size,
@@ -219,6 +240,8 @@ def create_model_and_optimizer(config: Config):
             pass
         case DDPConfig():
             model = torch.nn.parallel.DistributedDataParallel(model)
+        case FSDPConfig():
+            model = FSDP(model, device_id=torch.device(config.device))
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
@@ -231,9 +254,9 @@ def create_model_and_optimizer(config: Config):
     return model, optimizer
 
 
-def _ddp_main(rank: int, config: Config):
-    """Entry point for DDP parallelism. Manages process group initialization and cleanup."""
-    assert isinstance(config.parallel, DDPConfig)
+def _multiprocess_main(rank: int, config: Config):
+    """Entry point for DDP and FSDP parallelism. Manages process group initialization and cleanup."""
+    assert isinstance(config.parallel, (DDPConfig, FSDPConfig)), f"Invalid parallel config {config.parallel}"
 
     logging.basicConfig(level=config.log_level)
 
@@ -252,8 +275,8 @@ def main(config: Config):
     match config.parallel:
         case None:
             _main(0, config)
-        case DDPConfig():
-            torch.multiprocessing.spawn(_ddp_main, args=(config,), nprocs=config.parallel.world_size)
+        case DDPConfig() | FSDPConfig():
+            torch.multiprocessing.spawn(_multiprocess_main, args=(config,), nprocs=config.parallel.world_size)
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
@@ -292,19 +315,28 @@ def _main(rank: int, config: Config):
             test_loader,
             aggregate_test_results=config.parallel and config.parallel.aggregate_test_results,
         )
-        if rank == 0 and config.ckpt:
-            # All processes should see the same parameters as they all start from same
-            # random parameters and gradients are synchronized in backward passes.
-            # Therefore, saving it in one process is sufficient.
-            # DDP has model state dict in model.module.
+        if config.ckpt:
             match config.parallel:
                 case None:
                     model_state_dict = model.state_dict()
+                    torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
                 case DDPConfig():
-                    model_state_dict = model.module.state_dict()
+                    # All processes should see the same parameters as they all start from same
+                    # random parameters and gradients are synchronized in backward passes.
+                    # Therefore, saving it in one process is sufficient.
+                    # DDP has model state dict in model.module.
+                    if rank == 0:
+                        model_state_dict = model.module.state_dict()
+                        torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
+                case FSDPConfig():
+                    model_state_dict = dcp.state_dict.get_model_state_dict(model)
+                    dcp.save(
+                        state_dict={"model": model_state_dict},
+                        storage_writer=dcp.FileSystemWriter(Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt"),
+                    )
+                    dist.barrier()
                 case _:
                     raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
-            torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
 
 
 if __name__ == "__main__":

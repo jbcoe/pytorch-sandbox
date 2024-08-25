@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from subprocess import call
 
 import torch
+import torch.distributed.checkpoint as dcp
 import tyro
 
 import data.mnist_data as mnist_data
@@ -41,7 +42,18 @@ def main(config: DemoConfig):
     config = tyro.cli(DemoConfig)
     logging.basicConfig(level=config.log_level)
     model = cnn.Net()
-    state_dict = torch.load(config.ckpt, weights_only=True)
+    if not os.path.exists(config.ckpt):
+        _LOGGER.error("Model checkpoint not found: %s", config.ckpt)
+        return -1
+
+    if os.path.isfile(config.ckpt):
+        state_dict = torch.load(config.ckpt, weights_only=True)
+        model.load_state_dict(state_dict)
+    elif os.path.isdir(config.ckpt):
+        state_dict = {"model": model.state_dict()}
+        fs_reader = dcp.FileSystemReader(config.ckpt)
+        dcp.load(state_dict, storage_reader=fs_reader)
+        state_dict = state_dict["model"]
     try:
         model.load_state_dict(state_dict)
     except RuntimeError as e:
