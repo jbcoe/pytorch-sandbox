@@ -1,4 +1,7 @@
-"""Play with DataLoaders and DataPipes from pytorch."""
+"""Play with DataLoaders and DataPipes from pytorch.
+
+Written using https://pytorch.org/data/beta/torchdata.datapipes.iter.html#
+"""
 
 import enum
 import logging
