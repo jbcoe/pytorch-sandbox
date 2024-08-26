@@ -2,6 +2,7 @@
   "files.exclude": {
     ".mypy_cache": true,
     "**/__pycache__": true,
+    "**/*.egg-info": true,
     ".DATA": true,
     ".CKPT": true,
   },

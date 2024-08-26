@@ -1,6 +1,11 @@
 [project]
-name = "pytorch-sandbox"
+name = "pytorch_sandbox"
 description = "A place to play with pytorch."
+version = "0.0.1"
+
+[project.scripts]
+mnist-demo = "pytorch_sandbox.mnist_demo:main"
+mnist-train = "pytorch_sandbox.mnist_train:main"
 
 [project.urls]
 "GitHub" = "https://github.com/jbcoe/pytorch-sandbox"

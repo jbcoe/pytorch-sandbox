@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from subprocess import call
 
 import tyro
-from mnist_data import to_ascii_art
 from torchdata.datapipes.iter import IterableWrapper
 from torchvision import datasets, transforms  # type: ignore
+
+from pytorch_sandbox.data.mnist_data import to_ascii_art
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ class IsPrime:
         return x[1] in (2, 3, 5, 7)
 
 
-def main(config: Config):
+def main():
     """Main function for the demo."""
     config = tyro.cli(Config)
     logging.basicConfig(level=config.log_level)
@@ -83,6 +84,4 @@ def main(config: Config):
 
 
 if __name__ == "__main__":
-    config = tyro.cli(Config)
-    logging.basicConfig(level=logging.INFO)
-    raise SystemExit(main(config))
+    raise SystemExit(main())

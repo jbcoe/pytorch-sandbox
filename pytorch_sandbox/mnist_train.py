@@ -8,8 +8,10 @@ Command line arguments are parsed using the wonderful tyro package.
 For usage, run `python mnist.py --help`.
 """
 
+import dataclasses
 import datetime
 import enum
+import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -34,8 +36,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import data.mnist_data as mnist_data
-import model.cnn as cnn
+import pytorch_sandbox.data.mnist_data as mnist_data
+import pytorch_sandbox.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -184,9 +186,9 @@ class Config:
     data_step: int = 1
     num_workers: int = 0
     device: Literal["cpu", "mps"] = "cpu"
-    ckpt: str = ".CKPT"
-    data_dir: str = ".DATA"
-    training_data_fraction: float = 1.0
+    ckpt: str = ".CKPT"  # TODO: Avoid hardcoding local paths.
+    data_dir: str = ".DATA"  # TODO: Avoid hardcoding local paths.
+    training_data_fraction: float = 1.0  # TODO: Implement fractional training data.
     shuffle: bool = True
     log_level: LogLevel = LogLevel.INFO
     cnn_config: cnn.CNNConfig = field(default_factory=cnn.CNNConfig)
@@ -251,6 +253,7 @@ def create_model_and_optimizer(config: Config):
         model = torch.compile(
             model,
             mode=config.compile.mode,
+            backend=config.compile.backend,
             fullgraph=config.compile.fullgraph,
         )  # type: ignore
     return model, optimizer
@@ -272,8 +275,11 @@ def _multiprocess_main(rank: int, config: Config):
         dist.destroy_process_group()
 
 
-def main(config: Config):
+def main(args=None):
     """Main entry point."""
+    config = tyro.cli(Config, args=args)
+    logging.basicConfig(level=config.log_level)
+
     match config.parallel:
         case None:
             _main(0, config)
@@ -296,7 +302,7 @@ def _main(rank: int, config: Config):
 
     if rank == 0 and config.ckpt:
         with open(Path(config.ckpt) / f"mnist_{now}_config.txt", "w") as f:
-            f.write(str(config))
+            f.write(json.dumps(dataclasses.asdict(config)))
 
     for epoch in range(1, config.epochs + 1):
         train(
@@ -344,4 +350,4 @@ def _main(rank: int, config: Config):
 if __name__ == "__main__":
     config = tyro.cli(Config)
     logging.basicConfig(level=config.log_level)
-    raise SystemExit(main(config))
+    raise SystemExit(main())

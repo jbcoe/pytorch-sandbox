@@ -1,3 +1,4 @@
 .DATA
 */__pycache__/
 .CKPT
+pytorch_sandbox.egg-info

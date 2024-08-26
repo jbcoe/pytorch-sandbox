@@ -11,8 +11,8 @@ import torch
 import torch.distributed.checkpoint as dcp
 import tyro
 
-import data.mnist_data as mnist_data
-import model.cnn as cnn
+import pytorch_sandbox.data.mnist_data as mnist_data
+import pytorch_sandbox.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,9 +37,9 @@ class DemoConfig:
     only_errors: bool = False
 
 
-def main(config: DemoConfig):
+def main(args=None):
     """Main function for the demo."""
-    config = tyro.cli(DemoConfig)
+    config = tyro.cli(DemoConfig, args=args)
     logging.basicConfig(level=config.log_level)
     model = cnn.Net()
     if not os.path.exists(config.ckpt):
@@ -89,6 +89,4 @@ def main(config: DemoConfig):
 
 
 if __name__ == "__main__":
-    config = tyro.cli(DemoConfig)
-    logging.basicConfig(level=config.log_level)
-    main(config)
+    raise SystemExit(main())
