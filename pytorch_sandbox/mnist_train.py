@@ -43,8 +43,6 @@ import pytorch_sandbox.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
-device = torch.device("mps")
-
 
 def train(
     rank: int,
@@ -62,7 +60,7 @@ def train(
     data_len = len(train_loader.sampler) if train_loader.sampler else len(train_loader.dataset)  # type: ignore
     batch_size = train_loader.batch_size or 1
 
-    _LOGGER.info(f"{rank}: Train Epoch: {epoch}")
+    _LOGGER.info(f"Train Epoch: {epoch}")
     unlogged_steps = 0
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
@@ -77,8 +75,7 @@ def train(
         if verbose or unlogged_steps >= len(train_loader) / 10:
             unlogged_steps = 0
             _LOGGER.info(
-                "{}: Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    rank,
+                "Train Epoch: {} [{:>5}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
                     epoch,
                     batch_idx * batch_size,
                     data_len,  # type: ignore
@@ -108,7 +105,7 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
 
     test_loss /= data_len
 
-    _LOGGER.debug(f"{rank}: Data Length: {data_len} Correct: {correct}")
+    _LOGGER.debug(f"Data Length: {data_len} Correct: {correct}")
 
     if aggregate_test_results:
         all_test_loss = torch.tensor([test_loss], device=device)
@@ -125,11 +122,7 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
 
     accuracy = 100.0 * correct / data_len
     if rank == 0 or not aggregate_test_results:
-        _LOGGER.info(
-            "{}: Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(
-                rank, test_loss, correct, data_len, accuracy
-            )
-        )
+        _LOGGER.info("Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(test_loss, correct, data_len, accuracy))
     return accuracy
 
 
@@ -268,11 +261,56 @@ def create_model_and_optimizer(config: Config):
     return model, optimizer
 
 
+def maybe_save_model_state(
+    model: torch.nn.Module,
+    config: Config,
+    rank: int,
+    now: int,
+    epoch: int,
+):
+    """Save the model state if a checkpoint directory is provided."""
+    if not config.ckpt:
+        return
+
+    checkpoint_filepath = Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt"
+    match config.parallel:
+        case None:
+            model_state_dict = model.state_dict()
+            torch.save(model_state_dict, checkpoint_filepath)
+        case DDPConfig():
+            # All processes should see the same parameters as they all start from same
+            # random parameters and gradients are synchronized in backward passes.
+            # Therefore, saving it in one process is sufficient.
+            # DDP has model state dict in model.module.
+            if rank == 0:
+                model_state_dict = model.module.state_dict()
+                torch.save(model_state_dict, checkpoint_filepath)
+        case FSDPConfig():
+            model_state_dict = dcp.state_dict.get_model_state_dict(model)
+            dcp.save(
+                state_dict={"model": model_state_dict},
+                storage_writer=dcp.FileSystemWriter(checkpoint_filepath),
+            )
+            dist.barrier()
+        case _:
+            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+    _LOGGER.info("Saved model state at epoch %d to %s", epoch, checkpoint_filepath)
+
+
+def _configure_logging(log_level: LogLevel, rank: int | None = None):
+    """Configure logging for the application."""
+    if rank is not None:
+        format = f"%(asctime)s | %(levelname)s | %(filename)s:%(lineno)s | {rank} | %(message)s"
+    else:
+        format = "%(asctime)s | %(levelname)s | %(filename)s:%(lineno)s | %(message)s"
+    logging.basicConfig(level=log_level, format=format)
+
+
 def _multiprocess_main(rank: int, config: Config):
     """Entry point for DDP and FSDP parallelism. Manages process group initialization and cleanup."""
     assert isinstance(config.parallel, (DDPConfig, FSDPConfig)), f"Invalid parallel config {config.parallel}"
 
-    logging.basicConfig(level=config.log_level)
+    _configure_logging(config.log_level, rank)
 
     os.environ["MASTER_ADDR"] = config.parallel.hostname
     os.environ["MASTER_PORT"] = config.parallel.port
@@ -287,10 +325,10 @@ def _multiprocess_main(rank: int, config: Config):
 def main(args=None):
     """Main entry point."""
     config = tyro.cli(Config, args=args)
-    logging.basicConfig(level=config.log_level)
 
     match config.parallel:
         case None:
+            _configure_logging(config.log_level)
             _main(0, config)
         case DDPConfig() | FSDPConfig():
             torch.multiprocessing.spawn(_multiprocess_main, args=(config,), nprocs=config.parallel.world_size)
@@ -300,6 +338,7 @@ def main(args=None):
 
 def _main(rank: int, config: Config):
     """Single process training and evaluation loop."""
+
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
 
@@ -312,6 +351,8 @@ def _main(rank: int, config: Config):
     if rank == 0 and config.ckpt:
         with open(Path(config.ckpt) / f"mnist_{now}_config.txt", "w") as f:
             f.write(json.dumps(dataclasses.asdict(config)))
+
+    maybe_save_model_state(model, config, rank, now, epoch=0)
 
     for epoch in range(1, config.epochs + 1):
         train(
@@ -332,28 +373,7 @@ def _main(rank: int, config: Config):
             test_loader,
             aggregate_test_results=config.parallel and config.parallel.aggregate_test_results,
         )
-        if config.ckpt:
-            match config.parallel:
-                case None:
-                    model_state_dict = model.state_dict()
-                    torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
-                case DDPConfig():
-                    # All processes should see the same parameters as they all start from same
-                    # random parameters and gradients are synchronized in backward passes.
-                    # Therefore, saving it in one process is sufficient.
-                    # DDP has model state dict in model.module.
-                    if rank == 0:
-                        model_state_dict = model.module.state_dict()
-                        torch.save(model_state_dict, Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt")
-                case FSDPConfig():
-                    model_state_dict = dcp.state_dict.get_model_state_dict(model)
-                    dcp.save(
-                        state_dict={"model": model_state_dict},
-                        storage_writer=dcp.FileSystemWriter(Path(config.ckpt) / f"mnist_{now}_e{epoch}.pt"),
-                    )
-                    dist.barrier()
-                case _:
-                    raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+        maybe_save_model_state(model, config, rank, now, epoch)
 
 
 if __name__ == "__main__":
