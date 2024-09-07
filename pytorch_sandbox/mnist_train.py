@@ -27,9 +27,11 @@ import torch.distributed.fsdp
 import torch.nn.functional as F
 import torch.optim as optim
 import tyro
+from torch.distributed.fsdp import ShardingStrategy
 from torch.distributed.fsdp.fully_sharded_data_parallel import (
     FullyShardedDataParallel as FSDP,
 )
+from torch.distributed.fsdp.wrap import CustomPolicy
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
@@ -171,7 +173,9 @@ class CompileConfig:
 
     fullgraph: bool = False
     mode: str = "reduce-overhead"
-    backend: str = "inductor"
+    # backend "inductor" is torch's default but does not work on MPS.
+    # https://discuss.pytorch.org/t/torch-compile-seems-to-hang/177089/4
+    backend: str = "aot_eager"
 
 
 @dataclass(slots=True, frozen=True)
@@ -243,7 +247,12 @@ def create_model_and_optimizer(config: Config):
         case DDPConfig():
             model = DDP(model)
         case FSDPConfig():
-            model = FSDP(model, device_id=torch.device(config.device))
+            model = FSDP(
+                model,
+                device_id=torch.device(config.device),
+                sharding_strategy=ShardingStrategy.FULL_SHARD,
+                auto_wrap_policy=CustomPolicy(lambda _: True),
+            )
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
@@ -252,7 +261,7 @@ def create_model_and_optimizer(config: Config):
     if config.compile:
         model = torch.compile(
             model,
-            mode=config.compile.mode,
+            # mode=config.compile.mode,
             backend=config.compile.backend,
             fullgraph=config.compile.fullgraph,
         )  # type: ignore
@@ -348,6 +357,4 @@ def _main(rank: int, config: Config):
 
 
 if __name__ == "__main__":
-    config = tyro.cli(Config)
-    logging.basicConfig(level=config.log_level)
     raise SystemExit(main())
