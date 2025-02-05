@@ -29,11 +29,6 @@ repos:
   - id: requirements-txt-fixer
   - id: trailing-whitespace
 
-- repo: https://github.com/PyCQA/flake8
-  rev: 7.1.1
-  hooks:
-  - id: flake8
-
 - repo: https://github.com/codespell-project/codespell
   rev: v2.3.0
   hooks:
@@ -41,32 +36,15 @@ repos:
     additional_dependencies:
       - tomli
 
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.17.0
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.9.4
   hooks:
-  - id: pyupgrade
-
-- repo: https://github.com/psf/black-pre-commit-mirror
-  rev: 24.8.0
-  hooks:
-  - id: black
-
-- repo: https://github.com/asottile/yesqa
-  rev: v1.5.0
-  hooks:
-  - id: yesqa
-
-- repo: https://github.com/econchick/interrogate
-  rev: 1.7.0  # or master if you're bold
-  hooks:
-  - id: interrogate
-    args: [--fail-under=95]
-    pass_filenames: false  # needed if excluding files with pyproject.toml or setup.cfg
-
-- repo: https://github.com/pycqa/isort
-  rev: 5.13.2
-  hooks:
-  - id: isort
+    # Run the linter.
+    - id: ruff
+      args: [ --fix ]
+    # Run the formatter.
+    - id: ruff-format
 
 - repo: https://github.com/pre-commit/mirrors-mypy
   rev: v1.11.2

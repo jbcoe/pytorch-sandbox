@@ -4,19 +4,14 @@
     "**/__pycache__": true,
     "**/*.egg-info": true,
     ".DATA": true,
-    ".CKPT": true,
+    ".CKPT": true
   },
-  "editor.rulers": [
-    80,
-    120
-  ],
-  "black-formatter.importStrategy": "fromEnvironment",
+  "editor.rulers": [80, 120],
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-        "source.organizeImports": "explicit"
-    },
-  },
-  "isort.args":["--profile", "black"],
+      "source.organizeImports": "explicit"
+    }
+  }
 }

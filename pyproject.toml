@@ -10,11 +10,45 @@ mnist-train = "pytorch_sandbox.mnist_train:main"
 [project.urls]
 "GitHub" = "https://github.com/jbcoe/pytorch-sandbox"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
+indent-width = 4
 
-[tool.isort]
-profile = "black"
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+select = [
+    "B", # Bugbear
+    # "C901", # complex-structure. # TODO: Enable this check.
+    "D", # Docstrings
+    "E", # Pycodestyle
+    "F", # Pyflakes
+    "I", # Isort
+    "ICN003", # banned-import-from
+    "W", # Pycodestyle
+]
+ignore = [
+    "D107", # Missing docstring in `__init__`.
+    "D104", # Missing docstring in public package.
+    "D401", # First line of docstring should be in imperative mood.
+    "D415", # First line should end with a period, question mark, or exclamation point.
+    "D400", # First line should end with a period.
+    "D105", # Missing docstring in magic method.
+    "D203", # `no-blank-line-before-class`.
+    "D212", # `multi-line-summary-second-line`.
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.flake8-import-conventions]
+banned-from = ["*"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = [
+    "E402", # import violations
+]
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.mypy]
 python_version = "3.12"
@@ -27,9 +61,3 @@ pythonVersion = "3.12"
 [tool.coverage.run]
 concurrency = ["thread", "multiprocessing"]
 source = ["."]
-
-[tool.interrogate]
-verbose = "2"
-ignore-init-method = false
-omit-covered-files = false
-ignore-init-module = true

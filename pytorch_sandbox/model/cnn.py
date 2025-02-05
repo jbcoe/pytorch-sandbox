@@ -20,7 +20,8 @@ class CNNConfig:
 
 
 class Net(nn.Module):
-    """CNN model for MNIST character recognition.
+    """
+    CNN model for MNIST character recognition.
 
     Input is a 28x28 image, output is a log-probability for each of the 10 classes.
     """

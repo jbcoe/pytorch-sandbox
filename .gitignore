@@ -2,3 +2,4 @@
 **/__pycache__/*
 .CKPT
 pytorch_sandbox.egg-info
+.dmypy.json

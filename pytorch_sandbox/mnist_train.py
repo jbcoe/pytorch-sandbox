@@ -338,7 +338,6 @@ def main(args=None):
 
 def _main(rank: int, config: Config):
     """Single process training and evaluation loop."""
-
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
 

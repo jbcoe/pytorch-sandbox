@@ -77,7 +77,7 @@ def main(args=None):
 
         print(f"{mnist_data.to_ascii_art(data.squeeze(0))}\n")
 
-        print(f"Image: {idx+1}/{num_images}")
+        print(f"Image: {idx + 1}/{num_images}")
         input()
         print(f"Predicted: {pred.item()}")
 
