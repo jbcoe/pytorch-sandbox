@@ -2,6 +2,14 @@
 name = "pytorch_sandbox"
 description = "A place to play with pytorch."
 version = "0.0.1"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=2.2.4",
+    "torch>=2.6.0",
+    "torchdata>=0.11.0",
+    "torchvision>=0.21.0",
+    "tyro==0.3.25",
+]
 
 [project.scripts]
 mnist-demo = "pytorch_sandbox.mnist_demo:main"
@@ -51,13 +59,13 @@ banned-from = ["*"]
 quote-style = "double"
 
 [tool.mypy]
-python_version = "3.12"
 ignore_missing_imports = true
 check_untyped_defs = true
-
-[tool.pyright]
-pythonVersion = "3.12"
 
 [tool.coverage.run]
 concurrency = ["thread", "multiprocessing"]
 source = ["."]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
