@@ -1,5 +1,8 @@
-.DATA
-**/__pycache__/*
 .CKPT
-pytorch_sandbox.egg-info
+.DATA
 .dmypy.json
+.pytest_cache
+.ruff_cache
+.venv
+**/__pycache__/*
+pytorch_sandbox.egg-info
