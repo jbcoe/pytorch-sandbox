@@ -281,9 +281,11 @@ def maybe_save_model_state(
             # Therefore, saving it in one process is sufficient.
             # DDP has model state dict in model.module.
             if rank == 0:
+                assert isinstance(model, DDP)
                 model_state_dict = model.module.state_dict()
                 torch.save(model_state_dict, checkpoint_filepath)
         case FSDPConfig():
+            assert isinstance(model, FSDP)
             model_state_dict = dcp.state_dict.get_model_state_dict(model)
             dcp.save(
                 state_dict={"model": model_state_dict},
