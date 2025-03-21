@@ -1,5 +1,6 @@
 """A command line demo for a trained CNN model with ASCII art."""
 
+import argparse
 import enum
 import itertools
 import logging
@@ -9,7 +10,6 @@ from subprocess import call
 
 import torch
 import torch.distributed.checkpoint as dcp
-import tyro
 
 import pytorch_sandbox.data.mnist_data as mnist_data
 import pytorch_sandbox.model.cnn as cnn
@@ -39,7 +39,26 @@ class DemoConfig:
 
 def main(args=None):
     """Main function for the demo."""
-    config = tyro.cli(DemoConfig, args=args)
+    parser = argparse.ArgumentParser(description="A command line demo for a trained CNN model with ASCII art.")
+    parser.add_argument("ckpt", type=str, help="Path to model checkpoint")
+    parser.add_argument(
+        "--log-level",
+        type=lambda x: LogLevel[x.upper()],
+        default=LogLevel.WARNING,
+        choices=list(LogLevel),
+        help="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)",
+    )
+    parser.add_argument("--data-dir", type=str, default=".DATA", help="Directory containing the data")
+    parser.add_argument("--only-errors", action="store_true", help="Only show incorrect predictions")
+
+    parsed_args = parser.parse_args(args)
+    config = DemoConfig(
+        ckpt=parsed_args.ckpt,
+        log_level=parsed_args.log_level,
+        data_dir=parsed_args.data_dir,
+        only_errors=parsed_args.only_errors,
+    )
+
     logging.basicConfig(level=config.log_level)
     model = cnn.Net()
     if not os.path.exists(config.ckpt):
