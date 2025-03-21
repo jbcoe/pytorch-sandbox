@@ -4,7 +4,11 @@
     "**/__pycache__": true,
     "**/*.egg-info": true,
     ".DATA": true,
-    ".CKPT": true
+    ".CKPT": true,
+    ".ruff_cache": true,
+    ".pytest_cache": true,
+    ".venv": true,
+    ".dmypy.json": true
   },
   "editor.rulers": [80, 120],
   "[python]": {

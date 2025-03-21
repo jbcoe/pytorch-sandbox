@@ -28,9 +28,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import tyro
 from torch.distributed.fsdp import ShardingStrategy
-from torch.distributed.fsdp.fully_sharded_data_parallel import (
-    FullyShardedDataParallel as FSDP,
-)
+from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp.wrap import CustomPolicy
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.optimizer import Optimizer

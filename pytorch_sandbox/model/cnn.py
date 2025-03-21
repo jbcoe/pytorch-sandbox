@@ -31,7 +31,7 @@ class Net(nn.Module):
         config = config or CNNConfig()
         super().__init__()
         self.conv1 = nn.Conv2d(1, config.conv1_channels, 3, 1)
-        self.conv2 = nn.Conv2d(32, config.conv2_channels, 3, 1)
+        self.conv2 = nn.Conv2d(config.conv1_channels, config.conv2_channels, 3, 1)
         self.dropout1 = nn.Dropout(config.dropout1)
         self.dropout2 = nn.Dropout(config.dropout2)
 

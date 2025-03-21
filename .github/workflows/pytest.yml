@@ -1,0 +1,29 @@
+name: pytest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "**.py"
+      - "uv.lock"
+      - "pyproject.toml"
+  push:
+    branches: [main]
+    paths:
+      - "**.py"
+      - "uv.lock"
+      - "pyproject.toml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the latest version of uv and set the python version
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: PyTest
+        run: uv run --frozen pytest

@@ -2,7 +2,7 @@
 name = "pytorch_sandbox"
 description = "A place to play with pytorch."
 version = "0.0.1"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "numpy>=2.2.4",
     "torch>=2.6.0",
@@ -69,3 +69,6 @@ source = ["."]
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+exclude = ["*_test.py"]
