@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from subprocess import call
 
 import tyro
-from torchdata.datapipes.iter import IterableWrapper
-from torchvision import datasets, transforms  # type: ignore
+from torch.utils.data.datapipes.iter import IterableWrapper
+from torchvision import datasets, transforms
 
 from pytorch_sandbox.data.mnist_data import to_ascii_art
 
@@ -78,7 +78,7 @@ def main():
 
     datapipes = IterableWrapper(train).fork(2)
 
-    for data, _ in datapipes[0].filter(IsPrime()).repeat(2):
+    for data, _ in datapipes[0].filter(IsPrime()):
         call("clear" if os.name == "posix" else "cls")
         print(to_ascii_art(data[0]), "\n")
         input()

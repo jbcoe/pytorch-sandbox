@@ -3,7 +3,7 @@
 from typing import Protocol
 
 import torch
-from torchvision import datasets, transforms  # type: ignore
+from torchvision import datasets, transforms
 
 
 class MNISTConfig(Protocol):
