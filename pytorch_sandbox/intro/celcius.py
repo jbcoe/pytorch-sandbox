@@ -20,7 +20,6 @@ def Celsius_to_fahrenheit(Celsius: torch.Tensor) -> torch.Tensor:
 def generate_training_data(num_samples: int) -> tuple[torch.Tensor, torch.Tensor]:
     """Generate training data for the model."""
     celsius = torch.rand(num_samples) * 100.0
-    # Convert each element in the tensor individually
     fahrenheit = Celsius_to_fahrenheit(celsius)
     return celsius, fahrenheit
 
@@ -37,8 +36,8 @@ def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor],
         celsius, fahrenheit = data
         for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
-            logger.info("Model Fahrenheit prediction: %f.", model(torch.tensor([c])))
-            loss = loss_fn(model(torch.tensor([c])), torch.tensor([f]))
+            logger.info("Model Fahrenheit prediction: %f.", model(c.unsqueeze(0)))
+            loss = loss_fn(model(c.unsqueeze(0)), f.unsqueeze(0))
             logger.info("Loss: %f.", loss)
             optimizer.zero_grad()
             loss.backward()
@@ -80,4 +79,4 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     data = generate_training_data(1000)
     model = LinearRegression()
-    train_model(model, data, num_epochs=10)
+    train_model(model, data, num_epochs=20)
