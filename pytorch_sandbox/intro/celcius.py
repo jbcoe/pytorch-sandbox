@@ -18,10 +18,20 @@ def Celsius_to_fahrenheit(Celsius: torch.Tensor) -> torch.Tensor:
     return (Celsius * (9.0 / 5.0)) + 32.0
 
 
-def generate_training_data(num_samples: int) -> tuple[torch.Tensor, torch.Tensor]:
-    """Generate training data for the model."""
+def generate_training_data(num_samples: int, noise_std: float = 0.0) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Generate training data for the model.
+
+    Args:
+        num_samples: Number of samples to generate
+        noise_std: Standard deviation of Gaussian noise to add to fahrenheit values
+
+    """
     celsius = torch.rand(num_samples) * 100.0
     fahrenheit = Celsius_to_fahrenheit(celsius)
+    if noise_std > 0:
+        noise = torch.randn_like(fahrenheit) * noise_std
+        fahrenheit = fahrenheit + noise
     return celsius, fahrenheit
 
 
@@ -83,10 +93,11 @@ if __name__ == "__main__":
     parser.add_argument("--samples", type=int, default=1000, help="number of training samples (default: 1000)")
     parser.add_argument("--epochs", type=int, default=20, help="number of training epochs (default: 20)")
     parser.add_argument("--learning-rate", type=float, default=0.01, help="learning rate for optimizer (default: 0.01)")
+    parser.add_argument("--noise", type=float, default=0.0, help="standard deviation of noise to add (default: 0.0)")
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-    data = generate_training_data(args.samples)
+    data = generate_training_data(args.samples, args.noise)
     model = LinearRegression()
     train_model(model, data, num_epochs=args.epochs, learning_rate=args.learning_rate)
