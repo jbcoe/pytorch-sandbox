@@ -14,6 +14,7 @@ dependencies = [
 [project.scripts]
 mnist-demo = "pytorch_sandbox.mnist_demo:main"
 mnist-train = "pytorch_sandbox.mnist_train:main"
+mnist-viewer = "pytorch_sandbox.data.data_loading:main"
 
 [project.urls]
 "GitHub" = "https://github.com/jbcoe/pytorch-sandbox"
