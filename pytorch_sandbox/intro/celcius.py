@@ -25,16 +25,49 @@ def generate_training_data(num_samples: int) -> tuple[torch.Tensor, torch.Tensor
     return celsius, fahrenheit
 
 
-def train_model(data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5):
+def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5):
     """Train the model."""
     for epoch in range(num_epochs):
         # Iterate over the data.
         celsius, fahrenheit = data
         for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
+            logger.info("Model Fahrenheit prediction: %f.", model(torch.tensor([c])))
+
+
+class LinearRegression(torch.nn.Module):
+    """
+    A simple linear regression model implemented using PyTorch.
+
+    This class implements a single-input, single-output linear regression model
+    of the form y = wx + b, where w and b are learnable parameters.
+    """
+
+    def __init__(self):
+        """
+        Initialize the linear regression model.
+
+        Creates a single linear layer with input and output dimensions of 1.
+        """
+        super().__init__()
+        self.linear = torch.nn.Linear(1, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Perform the forward pass of the model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, 1)
+
+        Returns:
+            torch.Tensor: Output tensor of shape (batch_size, 1)
+
+        """
+        return self.linear(x)
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     data = generate_training_data(10)
-    train_model(data)
+    model = LinearRegression()
+    train_model(model, data)
