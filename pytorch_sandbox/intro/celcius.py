@@ -32,14 +32,17 @@ def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
 
 def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5):
     """Train the model."""
+    optimizer = torch.optim.AdamW(model.parameters())
     for epoch in range(num_epochs):
-        # Iterate over the data.
         celsius, fahrenheit = data
         for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
             logger.info("Model Fahrenheit prediction: %f.", model(torch.tensor([c])))
             loss = loss_fn(model(torch.tensor([c])), torch.tensor([f]))
             logger.info("Loss: %f.", loss)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
 
 class LinearRegression(torch.nn.Module):
@@ -75,6 +78,6 @@ class LinearRegression(torch.nn.Module):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    data = generate_training_data(10)
+    data = generate_training_data(1000)
     model = LinearRegression()
-    train_model(model, data)
+    train_model(model, data, num_epochs=10)
