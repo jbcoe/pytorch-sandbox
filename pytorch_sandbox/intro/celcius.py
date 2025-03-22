@@ -1,5 +1,6 @@
 """A minimal ML model using PyTorch to learn the relationship between Celsius and Fahrenheit."""
 
+import argparse
 import logging
 
 import torch
@@ -29,9 +30,11 @@ def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
     return torch.mean((y_pred - y_true) ** 2)
 
 
-def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5):
+def train_model(
+    model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5, learning_rate: float = 0.01
+):
     """Train the model."""
-    optimizer = torch.optim.AdamW(model.parameters())
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
         celsius, fahrenheit = data
         for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
@@ -76,7 +79,14 @@ class LinearRegression(torch.nn.Module):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train a model to convert Celsius to Fahrenheit")
+    parser.add_argument("--samples", type=int, default=1000, help="number of training samples (default: 1000)")
+    parser.add_argument("--epochs", type=int, default=20, help="number of training epochs (default: 20)")
+    parser.add_argument("--learning-rate", type=float, default=0.01, help="learning rate for optimizer (default: 0.01)")
+
+    args = parser.parse_args()
+
     logging.basicConfig(level=logging.INFO)
-    data = generate_training_data(1000)
+    data = generate_training_data(args.samples)
     model = LinearRegression()
-    train_model(model, data, num_epochs=20)
+    train_model(model, data, num_epochs=args.epochs, learning_rate=args.learning_rate)
