@@ -25,6 +25,11 @@ def generate_training_data(num_samples: int) -> tuple[torch.Tensor, torch.Tensor
     return celsius, fahrenheit
 
 
+def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
+    """Compute the loss between the predicted and true values."""
+    return torch.mean((y_pred - y_true) ** 2)
+
+
 def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5):
     """Train the model."""
     for epoch in range(num_epochs):
@@ -33,6 +38,8 @@ def train_model(model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor],
         for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
             logger.info("Model Fahrenheit prediction: %f.", model(torch.tensor([c])))
+            loss = loss_fn(model(torch.tensor([c])), torch.tensor([f]))
+            logger.info("Loss: %f.", loss)
 
 
 class LinearRegression(torch.nn.Module):
