@@ -4,13 +4,13 @@ Play with DataLoaders and DataPipes from pytorch.
 Written using https://pytorch.org/data/beta/torchdata.datapipes.iter.html#
 """
 
+import argparse
 import enum
 import logging
 import os
 from dataclasses import dataclass
 from subprocess import call
 
-import tyro
 from torch.utils.data.datapipes.iter import IterableWrapper
 from torchvision import datasets, transforms
 
@@ -60,7 +60,11 @@ class IsPrime:
 
 def main():
     """Main function for the demo."""
-    config = tyro.cli(Config)
+    parser = argparse.ArgumentParser(description="Description of your program")
+    parser.add_argument("--data_dir", type=str, default=".DATA", help="Directory to store data")
+    args = parser.parse_args()
+
+    config = Config(log_level=LogLevel.INFO, data_dir=args.data_dir)
     logging.basicConfig(level=config.log_level)
 
     transform = transforms.Compose(
@@ -85,4 +89,4 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
