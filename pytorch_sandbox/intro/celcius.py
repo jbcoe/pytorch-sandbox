@@ -18,7 +18,7 @@ def Celsius_to_fahrenheit(Celsius: torch.Tensor) -> torch.Tensor:
     return (Celsius * (9.0 / 5.0)) + 32.0
 
 
-def generate_training_data(num_samples: int, noise_std: float = 0.0) -> tuple[torch.Tensor, torch.Tensor]:
+def generate_training_data(num_samples: int, noise_std: float = 0.0) -> torch.Tensor:
     """
     Generate training data for the model.
 
@@ -32,7 +32,7 @@ def generate_training_data(num_samples: int, noise_std: float = 0.0) -> tuple[to
     if noise_std > 0:
         noise = torch.randn_like(fahrenheit) * noise_std
         fahrenheit = fahrenheit + noise
-    return celsius, fahrenheit
+    return torch.stack([celsius, fahrenheit], dim=1)
 
 
 def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
@@ -46,8 +46,7 @@ def train_model(
     """Train the model."""
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
-        celsius, fahrenheit = data
-        for i, (c, f) in enumerate(zip(celsius, fahrenheit, strict=True)):
+        for i, (c, f) in enumerate(data):
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
             logger.info("Model Fahrenheit prediction: %f.", model(c.unsqueeze(0)))
             loss = loss_fn(model(c.unsqueeze(0)), f.unsqueeze(0))
