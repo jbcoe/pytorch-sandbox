@@ -8,6 +8,12 @@ import torch
 logger = logging.getLogger(__name__)
 
 
+def set_seed(seed: int) -> None:
+    """Set random seed for reproducibility."""
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+
 def fahrenheit_to_celsius(fahrenheit: torch.Tensor) -> torch.Tensor:
     """Convert Fahrenheit to Celsius."""
     return (fahrenheit - 32.0) * (5.0 / 9.0)
@@ -40,10 +46,11 @@ def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
     return torch.mean((y_pred - y_true) ** 2)
 
 
-def train_model(
-    model: torch.nn.Module, data: tuple[torch.Tensor, torch.Tensor], num_epochs: int = 5, learning_rate: float = 0.01
-):
+def train_model(model: torch.nn.Module, data: torch.Tensor, num_epochs: int = 5, learning_rate: float = 0.01):
     """Train the model."""
+    assert data.ndim == 2, "Data must be a 2D tensor"
+    assert data.shape[1] == 2, "Data must have two columns: Celsius and Fahrenheit"
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
         for i, (c, f) in enumerate(data):
@@ -88,15 +95,44 @@ class LinearRegression(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a model to convert Celsius to Fahrenheit")
-    parser.add_argument("--samples", type=int, default=1000, help="number of training samples (default: 1000)")
-    parser.add_argument("--epochs", type=int, default=20, help="number of training epochs (default: 20)")
-    parser.add_argument("--learning-rate", type=float, default=0.01, help="learning rate for optimizer (default: 0.01)")
-    parser.add_argument("--noise", type=float, default=0.0, help="standard deviation of noise to add (default: 0.0)")
+    parser = argparse.ArgumentParser(
+        description="Train a model to convert Celsius to Fahrenheit",
+    )
+    parser.add_argument(
+        "--samples",
+        type=int,
+        default=1000,
+        help="number of training samples (default: 1000)",
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=20,
+        help="number of training epochs (default: 20)",
+    )
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.01,
+        help="learning rate for optimizer (default: 0.01)",
+    )
+    parser.add_argument(
+        "--noise",
+        type=float,
+        default=0.0,
+        help="standard deviation of noise to add (default: 0.0)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="random seed for reproducibility (default: 42)",
+    )
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
+    set_seed(args.seed)  # Set the random seed
     data = generate_training_data(args.samples, args.noise)
     model = LinearRegression()
     train_model(model, data, num_epochs=args.epochs, learning_rate=args.learning_rate)
