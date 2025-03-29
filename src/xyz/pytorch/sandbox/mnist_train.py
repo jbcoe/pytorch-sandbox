@@ -7,6 +7,7 @@ For usage, run `python mnist.py --help`.
 """
 
 import argparse
+import contextlib
 import dataclasses
 import datetime
 import enum
@@ -34,6 +35,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
+import mlflow
 import xyz.pytorch.sandbox.data.mnist_data as mnist_data
 import xyz.pytorch.sandbox.model.cnn as cnn
 
@@ -41,14 +43,17 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def train(
+    *,
     rank: int,
     model: torch.nn.Module,
     device: torch.device,
     train_loader: DataLoader,
     optimizer: Optimizer,
     epoch: int,
+    global_step: int,
     verbose: bool = False,
-):
+    mlflow_run: mlflow.ActiveRun | None = None,
+) -> int:
     """Train the model for one epoch."""
     model.train()
     model.to(device)
@@ -71,6 +76,11 @@ def train(
         loss.backward()
         optimizer.step()
 
+        if mlflow_run and rank == 0:
+            mlflow.log_metric("train_loss", loss.item(), step=batch_idx)
+
+        global_step += 1
+
         unlogged_steps += 1
         if verbose or unlogged_steps >= len(train_loader) / 10:
             unlogged_steps = 0
@@ -83,10 +93,11 @@ def train(
                     loss.item(),
                 )
             )
+    return global_step
 
 
 @torch.no_grad()
-def test(rank: int, model, device, test_loader, aggregate_test_results=False) -> float:
+def test(*, rank: int, model, device, test_loader, aggregate_test_results=False) -> float:
     """Test the model on the test data."""
     model.eval()
     model.to(device)
@@ -172,6 +183,16 @@ class CompileConfig:
 
 
 @dataclass(frozen=True)
+class MLFlowConfig:
+    """Configuration for MLFlow logging."""
+
+    experiment_name: str = "mnist"
+    tracking_uri: str = ".MLFLOW"
+    run_name: str | None = None
+    log_system_metrics: bool = True
+
+
+@dataclass(frozen=True)
 class Config:
     """Configuration for training and evaluating the model."""
 
@@ -192,6 +213,7 @@ class Config:
     parallel: DDPConfig | FSDPConfig | None = None
     compile: CompileConfig | None = None
     verbose: bool = False
+    mlflow: MLFlowConfig | None = None
 
 
 def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoader]:
@@ -262,11 +284,13 @@ def create_model_and_optimizer(config: Config):
 
 
 def maybe_save_model_state(
+    *,
     model: torch.nn.Module,
     config: Config,
     rank: int,
     now: int,
     epoch: int,
+    mlflow_run: mlflow.ActiveRun | None = None,
 ):
     """Save the model state if a checkpoint directory is provided."""
     if not config.ckpt:
@@ -297,6 +321,8 @@ def maybe_save_model_state(
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
     _LOGGER.info("Saved model state at epoch %d to %s", epoch, checkpoint_filepath)
+    if mlflow_run and not config.parallel:
+        mlflow.log_artifact(str(checkpoint_filepath))
 
 
 def _configure_logging(log_level: LogLevel, rank: int | None = None):
@@ -375,6 +401,14 @@ def create_arg_parser():
     compile_group.add_argument("--compile-mode", default="reduce-overhead", help="Compilation mode")
     compile_group.add_argument("--compile-backend", default="aot_eager", help="Compilation backend")
 
+    # MLFlow arguments
+    mlflow_group = parser.add_argument_group("MLFlow configuration")
+    mlflow_group.add_argument("--mlflow-tracking-uri", default=None, help="MLFlow tracking URI")
+    mlflow_group.add_argument("--mlflow-experiment", default="mnist", help="MLFlow experiment name")
+    mlflow_group.add_argument("--mlflow-run-name", help="MLFlow run name (default: timestamp)")
+    mlflow_group.add_argument(
+        "--mlflow-log-system-metrics", action="store_true", default=True, help="Log system metrics"
+    )
     return parser
 
 
@@ -411,6 +445,16 @@ def args_to_config(args):
             fullgraph=args.compile_fullgraph, mode=args.compile_mode, backend=args.compile_backend
         )
 
+    # Create MLFlow Config
+    mlflow_config = None
+    if args.mlflow_tracking_uri:
+        mlflow_config = MLFlowConfig(
+            experiment_name=args.mlflow_experiment,
+            tracking_uri=args.mlflow_tracking_uri,
+            run_name=args.mlflow_run_name,
+            log_system_metrics=args.mlflow_log_system_metrics,
+        )
+
     return Config(
         learning_rate=args.learning_rate,
         seed=args.seed,
@@ -429,6 +473,7 @@ def args_to_config(args):
         parallel=parallel_config,
         compile=compile_config,
         verbose=args.verbose,
+        mlflow=mlflow_config,
     )
 
 
@@ -459,32 +504,63 @@ def _main(rank: int, config: Config):
 
     now = int(datetime.datetime.now(datetime.UTC).timestamp())
 
-    if rank == 0 and config.ckpt:
-        with open(Path(config.ckpt) / f"mnist_{now}_config.txt", "w") as f:
-            f.write(json.dumps(dataclasses.asdict(config)))
+    with contextlib.ExitStack() as stack:
+        # Initialize MLFlow run if enabled.
+        mlflow_run = None
+        if config.mlflow and rank == 0:
+            mlflow.set_tracking_uri(config.mlflow.tracking_uri)
+            mlflow.set_experiment(config.mlflow.experiment_name)
+            mlflow_run = stack.enter_context(
+                mlflow.start_run(
+                    run_name=config.mlflow.run_name or f"mnist_{now}",
+                    log_system_metrics=config.mlflow.log_system_metrics,
+                )
+            )
+            # Log hyperparameters
+            mlflow.log_params(dataclasses.asdict(config))
 
-    maybe_save_model_state(model, config, rank, now, epoch=0)
+        # Save config.
+        if rank == 0 and config.ckpt:
+            config_path = Path(config.ckpt) / f"mnist_{now}_config.txt"
+            with open(config_path, "w") as f:
+                f.write(json.dumps(dataclasses.asdict(config)))
+            if mlflow_run:
+                mlflow.log_artifact(str(config_path))
 
-    for epoch in range(1, config.epochs + 1):
-        train(
-            rank,
-            model,
-            device,
-            train_loader,
-            optimizer,
-            epoch,
-            verbose=config.verbose,
-        )
-        if config.parallel:
-            dist.barrier()
-        test(
-            rank,
-            model,
-            device,
-            test_loader,
-            aggregate_test_results=config.parallel and config.parallel.aggregate_test_results,
-        )
-        maybe_save_model_state(model, config, rank, now, epoch)
+        # Save initial model state.
+        maybe_save_model_state(model=model, config=config, rank=rank, now=now, epoch=0)
+
+        global_step = 0
+
+        for epoch in range(1, config.epochs + 1):
+            global_step = train(
+                rank=rank,
+                model=model,
+                device=device,
+                train_loader=train_loader,
+                optimizer=optimizer,
+                epoch=epoch,
+                global_step=global_step,
+                verbose=config.verbose,
+                mlflow_run=mlflow_run,
+            )
+            if config.parallel:
+                dist.barrier()
+            test(
+                rank=rank,
+                model=model,
+                device=device,
+                test_loader=test_loader,
+                aggregate_test_results=config.parallel and config.parallel.aggregate_test_results,
+            )
+            maybe_save_model_state(
+                model=model,
+                config=config,
+                rank=rank,
+                now=now,
+                epoch=epoch,
+                mlflow_run=mlflow_run,
+            )
 
 
 if __name__ == "__main__":
