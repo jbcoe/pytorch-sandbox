@@ -1,15 +1,19 @@
 FROM python:3.12-slim
 
 # Install essential packages and create non-root user
-RUN apt-get update && apt-get install -y git curl \
+RUN apt-get update && apt-get install -y git curl sudo \
     && useradd -m -s /bin/bash vscode \
+    && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && mkdir -p /workspace \
     && chown vscode:vscode /workspace
 
-RUN mkdir -p /workspace
-RUN chmod -R 755 /workspace
 WORKDIR /workspace
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="~/.local/bin:${PATH}"
+# Switch to non-root user
+USER vscode
+
+# Set up uv and Python environment
+RUN curl -LsSf https://astral.sh/uv/install.sh
+
+# Set up environment variables
+ENV PATH="/home/vscode/.local/bin:${PATH}"
