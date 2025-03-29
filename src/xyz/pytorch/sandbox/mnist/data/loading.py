@@ -11,6 +11,7 @@ import os
 from dataclasses import dataclass
 from subprocess import call
 
+import torch
 from torch.utils.data.datapipes.iter import IterableWrapper
 from torchvision import datasets, transforms
 
@@ -40,11 +41,11 @@ class Config:
 class IsValue:
     """Filter data by a specific value. Avoids lambda functions."""
 
-    def __init__(self, value):
+    def __init__(self, value: int) -> None:
         """Initialize the filter."""
         self.value = value
 
-    def __call__(self, x):
+    def __call__(self, x: tuple[torch.Tensor, int]) -> bool:
         """Return True if the value is the same as the filter value."""
         return x[1] == self.value
 
@@ -52,15 +53,15 @@ class IsValue:
 class IsPrime:
     """Filter data. Avoids lambda functions."""
 
-    def __call__(self, x):
+    def __call__(self, x: tuple[torch.Tensor, int]) -> bool:
         """Return True if the value is prime."""
         assert x[1] >= 0 and x[1] < 10, f"Value {x[1]} must be between in [0, 10)."
         return x[1] in (2, 3, 5, 7)
 
 
-def main():
+def main() -> None:
     """Main function for the demo."""
-    parser = argparse.ArgumentParser(description="Description of your program")
+    parser = argparse.ArgumentParser(description="Data loading demo.")
     parser.add_argument("--data_dir", type=str, default=".DATA", help="Directory to store data")
     args = parser.parse_args()
 

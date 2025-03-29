@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import typing
 
 import torch
 
@@ -46,7 +47,12 @@ def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
     return torch.mean((y_pred - y_true) ** 2)
 
 
-def train_model(model: torch.nn.Module, data: torch.Tensor, num_epochs: int = 5, learning_rate: float = 0.01):
+def train_model(
+    model: torch.nn.Module,
+    data: torch.Tensor,
+    num_epochs: int = 5,
+    learning_rate: float = 0.01,
+) -> None:
     """Train the model."""
     assert data.ndim == 2, "Data must be a 2D tensor"
     assert data.shape[1] == 2, "Data must have two columns: Celsius and Fahrenheit"
@@ -72,7 +78,7 @@ class LinearRegression(torch.nn.Module):
     of the form y = wx + b, where w and b are learnable parameters.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize the linear regression model.
 
@@ -92,10 +98,10 @@ class LinearRegression(torch.nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, 1)
 
         """
-        return self.linear(x)
+        return typing.cast(torch.Tensor, self.linear(x))
 
 
-def main():
+def main() -> None:
     """Main entry point for the Celsius to Fahrenheit conversion model."""
     parser = argparse.ArgumentParser(
         description="Train a model to convert Celsius to Fahrenheit",
