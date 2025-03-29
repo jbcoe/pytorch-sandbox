@@ -1,6 +1,6 @@
 version = 1
 revision = 1
-requires-python = ">=3.12"
+requires-python = ">=3.12, <4"
 
 [[package]]
 name = "certifi"
@@ -536,9 +536,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "numpy", specifier = ">=2.2.4" },
-    { name = "pytest", specifier = ">=8.3.5" },
-    { name = "torch", specifier = ">=2.6.0" },
-    { name = "torchdata", specifier = ">=0.11.0" },
-    { name = "torchvision", specifier = ">=0.21.0" },
+    { name = "numpy" },
+    { name = "pytest" },
+    { name = "torch", specifier = "~=2.6.0" },
+    { name = "torchdata" },
+    { name = "torchvision" },
 ]

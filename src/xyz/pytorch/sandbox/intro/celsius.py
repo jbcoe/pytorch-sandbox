@@ -95,7 +95,8 @@ class LinearRegression(torch.nn.Module):
         return self.linear(x)
 
 
-if __name__ == "__main__":
+def main():
+    """Main entry point for the Celsius to Fahrenheit conversion model."""
     parser = argparse.ArgumentParser(
         description="Train a model to convert Celsius to Fahrenheit",
     )
@@ -137,3 +138,7 @@ if __name__ == "__main__":
     data = generate_training_data(args.samples, args.noise)
     model = LinearRegression()
     train_model(model, data, num_epochs=args.epochs, learning_rate=args.learning_rate)
+
+
+if __name__ == "__main__":
+    main()
