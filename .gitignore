@@ -5,4 +5,4 @@
 .ruff_cache
 .venv
 **/__pycache__/*
-pytorch_sandbox.egg-info
+**/*.sandbox.egg-info/*

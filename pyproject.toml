@@ -1,5 +1,5 @@
 [project]
-name = "pytorch_sandbox"
+name = "xyz-pytorch-sandbox"
 description = "A place to play with pytorch."
 version = "0.0.1"
 requires-python = ">=3.12"
@@ -12,9 +12,9 @@ dependencies = [
 ]
 
 [project.scripts]
-mnist-demo = "pytorch_sandbox.mnist_demo:main"
-mnist-train = "pytorch_sandbox.mnist_train:main"
-mnist-viewer = "pytorch_sandbox.data.data_loading:main"
+mnist-demo = "xyz.pytorch.sandbox.mnist_demo:main"
+mnist-train = "xyz.pytorch.sandbox.mnist_train:main"
+mnist-viewer = "xyz.pytorch.sandbox.data.data_loading:main"
 
 [project.urls]
 "GitHub" = "https://github.com/jbcoe/pytorch-sandbox"
@@ -71,5 +71,7 @@ source = ["."]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+
 [tool.setuptools.packages.find]
+where = ["src"]
 exclude = ["*_test.py"]

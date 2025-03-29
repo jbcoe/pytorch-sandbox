@@ -54,9 +54,10 @@ def train_model(model: torch.nn.Module, data: torch.Tensor, num_epochs: int = 5,
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     for epoch in range(num_epochs):
         for i, (c, f) in enumerate(data):
+            prediction = model(c.unsqueeze(0))
             logger.info("Epoch %d. Sample %d. Celsius %f. Fahrenheit %f.", epoch, i, c, f)
-            logger.info("Model Fahrenheit prediction: %f.", model(c.unsqueeze(0)))
-            loss = loss_fn(model(c.unsqueeze(0)), f.unsqueeze(0))
+            logger.info("Model Fahrenheit prediction: %f.", prediction)
+            loss = loss_fn(prediction, f.unsqueeze(0))
             logger.info("Loss: %f.", loss)
             optimizer.zero_grad()
             loss.backward()

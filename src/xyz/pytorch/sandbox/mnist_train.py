@@ -34,8 +34,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import pytorch_sandbox.data.mnist_data as mnist_data
-import pytorch_sandbox.model.cnn as cnn
+import xyz.pytorch.sandbox.data.mnist_data as mnist_data
+import xyz.pytorch.sandbox.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ def create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoad
 
 def create_model_and_optimizer(config: Config):
     """Create the model and optimizer using the given config."""
-    model: torch.nn.Module | FSDP | DDP = cnn.Net(config=config.cnn_config)
+    model: torch.nn.Module | FSDP | DDP = cnn.Net()  # config=config.cnn_config)
 
     match config.parallel:
         case None:

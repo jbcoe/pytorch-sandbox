@@ -14,7 +14,7 @@ from subprocess import call
 from torch.utils.data.datapipes.iter import IterableWrapper
 from torchvision import datasets, transforms
 
-from pytorch_sandbox.data.mnist_data import to_ascii_art
+from xyz.pytorch.sandbox.data.mnist_data import to_ascii_art
 
 _LOGGER = logging.getLogger(__name__)
 
