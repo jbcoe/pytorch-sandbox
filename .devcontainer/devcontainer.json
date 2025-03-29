@@ -9,9 +9,10 @@
             "extensions": [
                 "charliermarsh.ruff",
                 "esbenp.prettier-vscode",
-                "ms-python.mypy-type-checker",
+                "github.vscode-pull-request-github",
                 "ms-python.mypy-type-checker",
                 "ms-python.python",
+                "ms-python.vscode-pylance",
                 "ms-toolsai.jupyter-keymap",
                 "ms-toolsai.jupyter-renderers",
                 "ms-toolsai.jupyter",
