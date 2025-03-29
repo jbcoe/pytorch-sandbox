@@ -13,7 +13,7 @@ WORKDIR /workspace
 USER vscode
 
 # Set up uv and Python environment
-RUN curl -LsSf https://astral.sh/uv/install.sh
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Set up environment variables
 ENV PATH="/home/vscode/.local/bin:${PATH}"
