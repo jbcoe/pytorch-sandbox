@@ -11,8 +11,8 @@ from subprocess import call
 import torch
 import torch.distributed.checkpoint as dcp
 
-import xyz.pytorch.sandbox.data.mnist_data as mnist_data
-import xyz.pytorch.sandbox.model.cnn as cnn
+import xyz.pytorch.sandbox.mnist.data as mnist_data
+import xyz.pytorch.sandbox.mnist.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
