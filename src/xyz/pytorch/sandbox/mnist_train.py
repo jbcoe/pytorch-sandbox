@@ -53,8 +53,12 @@ def train(
     model.train()
     model.to(device)
 
-    data_len = len(train_loader.sampler) if train_loader.sampler else len(train_loader.dataset)  # type: ignore
-    batch_size = train_loader.batch_size or 1
+    data_len: int = (
+        len(train_loader.sampler)  # type: ignore[arg-type]
+        if train_loader.sampler
+        else len(train_loader.dataset)  # type: ignore[arg-type]
+    )
+    batch_size: int = train_loader.batch_size if train_loader.batch_size is not None else 1
 
     _LOGGER.info(f"Train Epoch: {epoch}")
     unlogged_steps = 0
@@ -122,7 +126,7 @@ def test(rank: int, model, device, test_loader, aggregate_test_results=False) ->
     return accuracy
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class LocalParallelConfig:
     """Configuration for local parallelism."""
 
@@ -132,14 +136,14 @@ class LocalParallelConfig:
     aggregate_test_results: bool = True
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class DDPConfig(LocalParallelConfig):
     """Configuration for DDP parallelism."""
 
     pass
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class FSDPConfig(LocalParallelConfig):
     """Configuration for FSDP parallelism."""
 
@@ -156,7 +160,7 @@ class LogLevel(enum.IntEnum):
     CRITICAL = logging.CRITICAL
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class CompileConfig:
     """Configuration for model compilation."""
 
@@ -167,7 +171,7 @@ class CompileConfig:
     backend: str = "aot_eager"
 
 
-@dataclass(slots=True, frozen=True)
+@dataclass(frozen=True)
 class Config:
     """Configuration for training and evaluating the model."""
 
