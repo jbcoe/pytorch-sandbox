@@ -1,5 +1,5 @@
 {
-    "name": "Python Development",
+    "name": "xyz PyTorch Sandbox Dev Container",
     "build": {
         "dockerfile": "Dockerfile",
         "context": ".."
