@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+import mlflow
 import torch
 import torch.distributed
 import torch.distributed as dist
@@ -35,7 +36,6 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import mlflow
 import xyz.pytorch.sandbox.data.mnist_data as mnist_data
 import xyz.pytorch.sandbox.model.cnn as cnn
 
