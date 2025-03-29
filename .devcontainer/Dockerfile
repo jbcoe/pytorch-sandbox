@@ -3,7 +3,7 @@
 FROM python:3.12-slim
 
 # Install essential packages and create non-root user
-RUN apt-get update && apt-get install -y git curl sudo bash-completion \
+RUN apt-get update && apt-get install -y git curl sudo bash-completion vim \
     && useradd -m -s /bin/bash vscode \
     && echo "vscode ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && mkdir -p /workspace \
