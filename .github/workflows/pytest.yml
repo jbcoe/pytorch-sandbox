@@ -19,7 +19,7 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     env:
-      UV_LOCK_FROZEN: "1"
+      UV_FROZEN: "1"
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
