@@ -31,6 +31,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          prune-cache: false
           cache-dependency-glob: "uv.lock"
 
       - name: PyTest
