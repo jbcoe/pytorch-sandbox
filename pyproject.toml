@@ -18,7 +18,7 @@ dev = ["mypy>=1.15.0", "pre-commit>=4.2.0", "pytest>=8.3.5", "ruff>=0.11.2"]
 [project.scripts]
 mnist-demo = "xyz.pytorch.sandbox.mnist.demo:main"
 mnist-train = "xyz.pytorch.sandbox.mnist.train:main"
-mnist-viewer = "xyz.pytorch.sandbox.data.data_loading:main"
+mnist-viewer = "xyz.pytorch.sandbox.data.loading:main"
 intro-temperature = "xyz.pytorch.sandbox.intro.temperature:main"
 
 [project.urls]
