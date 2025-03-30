@@ -2,11 +2,37 @@
 
 A place to play with PyTorch.
 
-**Do not use this code**
+## Warning
 
-**Examples may be incorrect or outdated.**
+Do not use this code
+
+Examples may be incorrect or outdated.
 
 ## References
+
+### AI tools
+
+- [MLFlow](https://mlflow.org/)
+
+- [MNIST](https://en.wikipedia.org/wiki/MNIST_database)
+
+- [PyTorch](https://pytorch.org/)
+
+### Infrastructure tools
+
+- [devcontainers](https://code.visualstudio.com/docs/devcontainers/containers)
+
+- [docker](https://docs.docker.com/get-started/)
+
+- [mypy](https://mypy.readthedocs.io/)
+
+- [pre-commit](https://pre-commit.com/)
+
+- [pyproject.toml](https://realpython.com/python-pyproject-toml/)
+
+- [ruff](https://docs.astral.sh/ruff/)
+
+- [uv](https://docs.astral.sh/uv/)
 
 ### Books
 
