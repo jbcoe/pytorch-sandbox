@@ -55,7 +55,7 @@ class IsPrime:
 
     def __call__(self, x: tuple[torch.Tensor, int]) -> bool:
         """Return True if the value is prime."""
-        assert x[1] >= 0 and x[1] < 10, f"Value {x[1]} must be between in [0, 10)."
+        assert x[1] >= 0 and x[1] < 10, f"Value {x[1]} must be in [0, 10)."
         return x[1] in (2, 3, 5, 7)
 
 
