@@ -35,14 +35,14 @@ def test_to_ascii_art_invalid_dimensions() -> None:
 
     Failure of this test would indicate that:
     1. The function is accepting 3D tensors when it should only accept 2D
-    2. The function is accepting tensors larger than 28x28
+    2. The function is accepting tensors that are not 28x28
     3. The dimension validation assertions are not working correctly
     """
     # Test wrong dimensions
     with pytest.raises(AssertionError, match="Data must be 2-D"):
         to_ascii_art(torch.zeros(3, 28, 28))
 
-    with pytest.raises(AssertionError, match="Data must be <= 28x28"):
+    with pytest.raises(AssertionError, match="Data must be 28x28"):
         to_ascii_art(torch.zeros(29, 29))
 
 
