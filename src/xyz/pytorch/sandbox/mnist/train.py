@@ -36,8 +36,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import xyz.pytorch.sandbox.data.mnist_data as mnist_data
-import xyz.pytorch.sandbox.model.cnn as cnn
+import xyz.pytorch.sandbox.mnist.data as mnist_data
+import xyz.pytorch.sandbox.mnist.model.cnn as cnn
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def test(*, rank: int, model, device, test_loader, aggregate_test_results=False)
     model.eval()
     model.to(device)
 
-    data_len = len(test_loader.sampler) if test_loader.sampler else len(test_loader.dataset)  # type: ignore
+    data_len = len(test_loader.sampler) if test_loader.sampler else len(test_loader.dataset)
 
     test_loss = 0.0
     correct = 0.0
@@ -325,7 +325,7 @@ def maybe_save_model_state(
         mlflow.log_artifact(str(checkpoint_filepath))
 
 
-def _configure_logging(log_level: LogLevel, rank: int | None = None):
+def _configure_logging(log_level: LogLevel, rank: int | None = None) -> None:
     """Configure logging for the application."""
     if rank is not None:
         format = f"%(asctime)s | %(levelname)s | %(filename)s:%(lineno)s | {rank} | %(message)s"
@@ -334,7 +334,7 @@ def _configure_logging(log_level: LogLevel, rank: int | None = None):
     logging.basicConfig(level=log_level, format=format)
 
 
-def _multiprocess_main(rank: int, config: Config):
+def _multiprocess_main(rank: int, config: Config) -> None:
     """Entry point for DDP and FSDP parallelism. Manages process group initialization and cleanup."""
     assert isinstance(config.parallel, (DDPConfig, FSDPConfig)), f"Invalid parallel config {config.parallel}"
 
@@ -350,7 +350,7 @@ def _multiprocess_main(rank: int, config: Config):
         dist.destroy_process_group()
 
 
-def create_arg_parser():
+def create_arg_parser() -> argparse.ArgumentParser:
     """Create and return the argument parser."""
     parser = argparse.ArgumentParser(description="MNIST character recognition training")
 
@@ -412,7 +412,7 @@ def create_arg_parser():
     return parser
 
 
-def args_to_config(args):
+def args_to_config(args: argparse.Namespace) -> Config:
     """Convert parsed arguments to Config object."""
     # Create CNN Config
     cnn_config = cnn.CNNConfig(
@@ -477,10 +477,10 @@ def args_to_config(args):
     )
 
 
-def main(args=None):
+def main(argv: list[str] | None = None) -> None:
     """Main entry point."""
     parser = create_arg_parser()
-    args = parser.parse_args(args)
+    args = parser.parse_args(argv)
     config = args_to_config(args)
 
     match config.parallel:
@@ -493,7 +493,7 @@ def main(args=None):
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
 
-def _main(rank: int, config: Config):
+def _main(rank: int, config: Config) -> None:
     """Single process training and evaluation loop."""
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
@@ -564,4 +564,4 @@ def _main(rank: int, config: Config):
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

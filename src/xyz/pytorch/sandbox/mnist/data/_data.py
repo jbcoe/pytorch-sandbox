@@ -24,10 +24,10 @@ def load_mnist(config: MNISTConfig) -> tuple[datasets.MNIST, datasets.MNIST]:
     return train, test
 
 
-def to_ascii_art(data: torch.Tensor, skip_blank_lines: bool = True, invert=False) -> str:
+def to_ascii_art(data: torch.Tensor, skip_blank_lines: bool = True, invert: bool = False) -> str:
     """Convert a 2-D tensor to ASCII art."""
     assert data.dim() == 2, "Data must be 2-D"
-    assert data.size(0) == 28 and data.size(1) == 28, "Data must be <= 28x28"
+    assert data.size(0) == 28 and data.size(1) == 28, "Data must be 28x28"
 
     GREYSCALE = " .:-=+*#%@"
 

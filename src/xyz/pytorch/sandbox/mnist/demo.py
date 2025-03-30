@@ -37,7 +37,7 @@ class DemoConfig:
     only_errors: bool = False
 
 
-def main(args=None):
+def main(args: list[str] | None = None) -> int:
     """Main function for the demo."""
     parser = argparse.ArgumentParser(description="A command line demo for a trained CNN model with ASCII art.")
     parser.add_argument("ckpt", type=str, help="Path to model checkpoint")
@@ -105,6 +105,8 @@ def main(args=None):
 
         input()
         call("clear" if os.name == "posix" else "cls")
+
+    return 0
 
 
 if __name__ == "__main__":
