@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from .mnist_data import to_ascii_art
+from xyz.pytorch.sandbox.mnist.data import to_ascii_art
 
 
 def test_to_ascii_art_basic() -> None:
