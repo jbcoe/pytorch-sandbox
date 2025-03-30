@@ -20,10 +20,19 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - name: Install the latest version of uv and set the python version
-        uses: astral-sh/setup-uv@v5
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
+
+      - name: Install the latest version of uv.
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
       - name: PyTest
         run: uv run pytest
