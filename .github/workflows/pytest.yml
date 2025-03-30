@@ -7,18 +7,17 @@ on:
       - "**.py"
       - "uv.lock"
       - "pyproject.toml"
+      - ".github/workflows/pytest.yml"
   push:
     branches: [main]
     paths:
       - "**.py"
       - "uv.lock"
       - "pyproject.toml"
-
+      - ".github/workflows/pytest.yml"
 jobs:
-  test:
+  pytest:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v4
