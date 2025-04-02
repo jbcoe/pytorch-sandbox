@@ -7,6 +7,7 @@ dependencies = [
     "mlflow>=2.21.2",
     "numpy>=2.2.4",
     "psutil>=7.0.0",
+    "psycopg2-binary>=2.9.10",
     "torch~=2.6.0",
     "torchdata>=0.11.0",
     "torchvision>=0.21.0",
@@ -70,6 +71,10 @@ quote-style = "double"
 [tool.mypy]
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["mlflow.*"]
+follow_imports = "skip"
 
 [tool.coverage.run]
 concurrency = ["thread", "multiprocessing"]
