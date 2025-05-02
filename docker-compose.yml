@@ -1,0 +1,63 @@
+services:
+  mlflow:
+    build:
+      context: ./docker/mlflow
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5000"
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql://mlflow:mlflow@postgres:5432/mlflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mlflow-network
+
+  postgres:
+    build:
+      context: ./docker/postgres
+      dockerfile: Dockerfile
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=mlflow
+      - POSTGRES_USER=mlflow
+      - POSTGRES_PASSWORD=mlflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mlflow-network
+
+  mnist-train:
+    build:
+      context: .
+      dockerfile: docker/mnist-train/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    environment:
+      - MLFLOW_TRACKING_URI=postgresql://mlflow:mlflow@postgres:5432/mlflow
+      - GIT_PYTHON_REFRESH=quiet
+    networks:
+      - mlflow-network
+    command: tail -f /dev/null
+    volumes:
+      - ./.CKPT:/app/.CKPT
+      - ./.DATA:/app/.DATA
+
+volumes:
+  postgres_data:
+
+networks:
+  mlflow-network:
+    driver: bridge

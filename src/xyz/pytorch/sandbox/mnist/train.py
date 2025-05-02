@@ -447,10 +447,10 @@ def args_to_config(args: argparse.Namespace) -> Config:
 
     # Create MLFlow Config
     mlflow_config = None
-    if args.mlflow_tracking_uri:
+    if mlflow_tracking_uri := args.mlflow_tracking_uri or os.getenv("MLFLOW_TRACKING_URI"):
         mlflow_config = MLFlowConfig(
             experiment_name=args.mlflow_experiment,
-            tracking_uri=args.mlflow_tracking_uri,
+            tracking_uri=mlflow_tracking_uri,
             run_name=args.mlflow_run_name,
             log_system_metrics=args.mlflow_log_system_metrics,
         )
@@ -521,6 +521,7 @@ def _main(rank: int, config: Config) -> None:
 
         # Save config.
         if rank == 0 and config.ckpt:
+            os.makedirs(config.ckpt, exist_ok=True)
             config_path = Path(config.ckpt) / f"mnist_{now}_config.txt"
             with open(config_path, "w") as f:
                 f.write(json.dumps(dataclasses.asdict(config)))
