@@ -8,3 +8,4 @@
 **/*sandbox.egg-info/*
 MLFLOW/*
 mlruns/*
+*.egg-info
