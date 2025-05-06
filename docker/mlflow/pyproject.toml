@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xyz-mlflow-server"
+version = "0.1.0"
+description = "MLFlow Server"
+readme = "README.md"
+requires-python = ">=3.12, <4"
+dependencies = [
+    "mlflow>=2.21.2",
+    "psycopg2-binary>=2.9.10",
+    "python-dotenv>=1.1.0",
+]
