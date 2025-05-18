@@ -43,7 +43,10 @@ repos:
       args: [ --fix ]
     - id: ruff-format
 
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.15.0
-  hooks:
-  -   id: mypy
+repos:
+  - repo: local
+    hooks:
+      - id: ty
+        name: ty check
+        entry: uv run --active ty check .
+        language: python
