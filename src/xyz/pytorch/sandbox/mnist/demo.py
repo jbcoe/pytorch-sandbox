@@ -87,7 +87,7 @@ def main(args: list[str] | None = None) -> int:
     _, mnist_test = mnist_data.load_mnist(config)
 
     num_images = len(mnist_test)
-    for idx, (data, target) in enumerate(itertools.chain(mnist_test)):
+    for idx, (data, target) in enumerate(itertools.chain(mnist_test)):  # ty: ignore[invalid-argument-type]
         output = model(data.unsqueeze(0))
         pred = output.argmax(dim=1, keepdim=True)
 

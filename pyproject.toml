@@ -14,7 +14,13 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy>=1.15.0", "pre-commit>=4.2.0", "pytest>=8.3.5", "ruff>=0.11.2"]
+dev = [
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "ruff>=0.11.2",
+    "ty>=0.0.1a5",
+]
 
 [project.scripts]
 mnist-demo = "xyz.pytorch.sandbox.mnist.demo:main"
@@ -33,7 +39,7 @@ indent-width = 4
 # https://docs.astral.sh/ruff/rules/
 select = [
     "B",      # Bugbear
-    "C901",   # complex-structure. # TODO: Enable this check.
+    "C901",   # complex-structure
     "D",      # Docstrings
     "E",      # Pycodestyle
     "F",      # Pyflakes
@@ -68,13 +74,9 @@ known-third-party = ["mlflow"]
 [tool.ruff.format]
 quote-style = "double"
 
-[tool.mypy]
-ignore_missing_imports = true
-check_untyped_defs = true
-
-[[tool.mypy.overrides]]
-module = ["mlflow.*"]
-follow_imports = "skip"
+[tool.ty.rules]
+possibly-unbound-attribute = "ignore"
+unresolved-import = "ignore"
 
 [tool.coverage.run]
 concurrency = ["thread", "multiprocessing"]

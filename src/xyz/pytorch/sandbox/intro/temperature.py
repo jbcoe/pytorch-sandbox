@@ -44,7 +44,7 @@ def generate_training_data(num_samples: int, noise_std: float = 0.0) -> torch.Te
 
 def loss_fn(y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
     """Compute the loss between the predicted and true values."""
-    return torch.mean((y_pred - y_true) ** 2)
+    return torch.mean(torch.square(y_pred - y_true))
 
 
 def train_model(

@@ -63,7 +63,7 @@ def train(
         if train_loader.sampler
         else len(train_loader.dataset)  # type: ignore[arg-type]
     )
-    batch_size: int = train_loader.batch_size if train_loader.batch_size is not None else 1
+    batch_size: int = train_loader.batch_size or 1
 
     _LOGGER.info(f"Train Epoch: {epoch}")
     unlogged_steps = 0
