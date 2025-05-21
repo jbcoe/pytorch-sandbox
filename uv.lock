@@ -1841,7 +1841,7 @@ wheels = [
 [[package]]
 name = "xyz-mlflow-server"
 version = "0.1.0"
-source = { editable = "docker/mlflow" }
+source = { editable = "docker/mlflow-server" }
 dependencies = [
     { name = "mlflow" },
     { name = "psycopg2-binary" },

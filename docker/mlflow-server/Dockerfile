@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 ADD . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --directory=docker/mlflow
+    uv sync --frozen --no-dev --directory=docker/mlflow-server
 
 # Then, use a final image without uv
 FROM debian:bookworm-slim

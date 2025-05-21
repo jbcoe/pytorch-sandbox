@@ -91,7 +91,7 @@ where = ["src"]
 exclude = ["*_test.py"]
 
 [tool.uv.workspace]
-members = ["docker/mlflow"]
+members = ["docker/mlflow-server"]
 
 [tool.uv.sources]
 "xyz-mlflow-server" = { workspace = true }

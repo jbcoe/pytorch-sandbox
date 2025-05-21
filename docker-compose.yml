@@ -2,7 +2,7 @@ services:
   mlflow:
     build:
       context: .
-      dockerfile: ./docker/mlflow/Dockerfile
+      dockerfile: ./docker/mlflow-server/Dockerfile
     ports:
       - "5002:5000"
     command: >
@@ -18,7 +18,7 @@ services:
 
   postgres:
     build:
-      context: ./docker/postgres
+      context: ./docker/postgres-server
       dockerfile: Dockerfile
     ports:
       - "5432:5432"
@@ -39,7 +39,7 @@ services:
   mnist-train:
     build:
       context: .
-      dockerfile: docker/mnist-train/Dockerfile
+      dockerfile: docker/mnist-train-server/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy

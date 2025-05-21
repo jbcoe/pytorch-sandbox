@@ -98,7 +98,7 @@ class LinearRegression(torch.nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, 1)
 
         """
-        return typing.cast(torch.Tensor, self.linear(x))
+        return self.linear(x)
 
 
 def main() -> None:
