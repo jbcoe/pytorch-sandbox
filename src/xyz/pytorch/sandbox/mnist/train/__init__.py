@@ -17,8 +17,6 @@ from pathlib import Path
 import mlflow
 import torch
 import torch.distributed as dist
-import torch.distributed.checkpoint.state_dict
-import torch.distributed.fsdp
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributed.fsdp import ShardingStrategy
@@ -189,7 +187,7 @@ def _multiprocess_main(rank: int, config: Config) -> None:
 
     try:
         dist.init_process_group(backend="gloo", rank=rank, world_size=config.parallel.world_size)
-        _main(rank, config)
+        _single_process_main(rank, config)
     finally:
         dist.destroy_process_group()
 
@@ -203,14 +201,14 @@ def main(argv: list[str] | None = None) -> None:
     match config.parallel:
         case None:
             _configure_logging(config.log_level)
-            _main(0, config)
+            _single_process_main(0, config)
         case DDPConfig() | FSDPConfig():
             torch.multiprocessing.spawn(_multiprocess_main, args=(config,), nprocs=config.parallel.world_size)
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
 
-def _main(rank: int, config: Config) -> None:
+def _single_process_main(rank: int, config: Config) -> None:
     """Single process training and evaluation loop."""
     torch.manual_seed(config.seed)
     device = torch.device(config.device)

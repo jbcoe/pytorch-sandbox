@@ -8,8 +8,6 @@ import mlflow
 import torch
 import torch.distributed as dist
 import torch.distributed.checkpoint as dcp
-import torch.distributed.checkpoint.state_dict
-import torch.distributed.fsdp
 from torch.distributed.fsdp.fully_sharded_data_parallel import FullyShardedDataParallel as FSDP
 from torch.nn.parallel import DistributedDataParallel as DDP
 
