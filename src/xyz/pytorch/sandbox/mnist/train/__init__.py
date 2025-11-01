@@ -27,10 +27,7 @@ from torch.distributed.fsdp.wrap import CustomPolicy
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader
-from torch.utils.data.distributed import DistributedSampler
-from torchdata.stateful_dataloader import StatefulDataLoader  # type: ignore
 
-import xyz.pytorch.sandbox.mnist.data as mnist_data
 import xyz.pytorch.sandbox.mnist.model.cnn as cnn
 from xyz.pytorch.sandbox.mnist.train.checkpoint import maybe_save_model_state
 from xyz.pytorch.sandbox.mnist.train.config import (
@@ -41,6 +38,7 @@ from xyz.pytorch.sandbox.mnist.train.config import (
     args_to_config,
     create_arg_parser,
 )
+from xyz.pytorch.sandbox.mnist.train.data import create_data_loaders
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -140,42 +138,6 @@ def test(*, rank: int, model, device, test_loader, aggregate_test_results=False)
     return accuracy
 
 
-def _create_data_loaders(rank: int, config: Config) -> tuple[DataLoader, DataLoader]:
-    """Load MNIST data and return training and test data loaders."""
-    mnist_train, mnist_test = mnist_data.load_mnist(config)
-
-    assert config.training_data_fraction == 1.0, "Fractional training data not implemented"
-
-    match config.parallel:
-        case None:
-            train_sampler, test_sampler = None, None
-        case DDPConfig() | FSDPConfig():
-            train_sampler = DistributedSampler(
-                mnist_train,
-                num_replicas=config.parallel.world_size,
-                rank=rank,
-                seed=config.seed,
-                shuffle=config.shuffle,
-            )
-            test_sampler = DistributedSampler(
-                mnist_test,
-                num_replicas=config.parallel.world_size,
-                rank=rank,
-                seed=config.seed,
-            )
-        case _:
-            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
-
-    train_loader = StatefulDataLoader(
-        mnist_train,
-        sampler=train_sampler,
-        num_workers=config.num_workers,
-        batch_size=config.batch_size,
-    )
-    test_loader = StatefulDataLoader(mnist_test, sampler=test_sampler, batch_size=config.batch_size)
-    return train_loader, test_loader
-
-
 def _create_model_and_optimizer(config: Config):
     """Create the model and optimizer using the given config."""
     model: torch.nn.Module | FSDP | DDP = cnn.Net()  # config=config.cnn_config)
@@ -253,7 +215,7 @@ def _main(rank: int, config: Config) -> None:
     torch.manual_seed(config.seed)
     device = torch.device(config.device)
 
-    train_loader, test_loader = _create_data_loaders(rank, config)
+    train_loader, test_loader = create_data_loaders(rank, config)
 
     model, optimizer = _create_model_and_optimizer(config)
 
