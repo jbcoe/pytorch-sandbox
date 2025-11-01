@@ -52,10 +52,15 @@ def train(
     global_step: int,
     verbose: bool = False,
     mlflow_run: mlflow.ActiveRun | None = None,
+    reference_model: torch.nn.Module | None = None,
 ) -> int:
     """Train the model for one epoch."""
     model.train()
     model.to(device)
+
+    if reference_model:
+        reference_model.eval()
+        reference_model.to(device)
 
     data_len: int = (
         len(train_loader.sampler)  # type: ignore[arg-type]
@@ -71,7 +76,17 @@ def train(
 
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+
+        if reference_model:
+            # We need to convert model output (Negative Log Likelyhood) into probabilities.
+            probabilities = torch.exp(output)
+            with torch.no_grad():
+                reference_output = reference_model(data)
+                reference_probabilities = torch.exp(reference_output)
+            loss = F.cross_entropy(probabilities, reference_probabilities)
+        else:
+            loss = F.nll_loss(output, target)
+
         loss.backward()
         optimizer.step()
 
@@ -136,9 +151,43 @@ def test(*, rank: int, model, device, test_loader, aggregate_test_results=False)
     return accuracy
 
 
-def _create_model_and_optimizer(config: Config):
+def _maybe_load_reference_model(config: Config) -> torch.nn.Module | None:
+    """Load a reference model from the specified checkpoint if requested."""
+    if not config.reference_model_ckpt:
+        return None
+
+    reference_model: torch.nn.Module = cnn.Net()
+    state_dict = torch.load(config.reference_model_ckpt, weights_only=True)
+    reference_model.load_state_dict(state_dict)
+
+    match config.parallel:
+        case None:
+            pass
+        case DDPConfig():
+            reference_model = DDP(reference_model)
+        case FSDPConfig():
+            reference_model = FSDP(
+                reference_model,
+                device_id=torch.device(config.device),
+                sharding_strategy=ShardingStrategy.FULL_SHARD,
+                auto_wrap_policy=CustomPolicy(lambda _: True),
+            )
+        case _:
+            raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
+
+    if config.compile:
+        reference_model = torch.compile(
+            reference_model,
+            # mode=config.compile.mode,
+            backend=config.compile.backend,
+            fullgraph=config.compile.fullgraph,
+        )  # type: ignore
+    return reference_model
+
+
+def _create_model_and_optimizer(config: Config) -> tuple[torch.nn.Module, torch.optim.Optimizer]:
     """Create the model and optimizer using the given config."""
-    model: torch.nn.Module | FSDP | DDP = cnn.Net()  # config=config.cnn_config)
+    model: torch.nn.Module = cnn.Net()  # config=config.cnn_config)
 
     match config.parallel:
         case None:
@@ -216,6 +265,7 @@ def _single_process_main(rank: int, config: Config) -> None:
     train_loader, test_loader = create_data_loaders(rank, config)
 
     model, optimizer = _create_model_and_optimizer(config)
+    reference_model = _maybe_load_reference_model(config)
 
     now = int(datetime.datetime.now(datetime.UTC).timestamp())
 
@@ -259,6 +309,7 @@ def _single_process_main(rank: int, config: Config) -> None:
                 global_step=global_step,
                 verbose=config.verbose,
                 mlflow_run=mlflow_run,
+                reference_model=reference_model,
             )
             if config.parallel:
                 dist.barrier()

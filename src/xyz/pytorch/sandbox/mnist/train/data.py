@@ -1,7 +1,5 @@
 """Data-loading for the MNIST trainer."""
 
-
-
 from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from torchdata.stateful_dataloader import StatefulDataLoader

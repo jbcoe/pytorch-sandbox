@@ -1,6 +1,5 @@
 """Checkpointing for MNIST training."""
 
-
 import logging
 from pathlib import Path
 
@@ -18,6 +17,7 @@ from xyz.pytorch.sandbox.mnist.train.config import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
 
 def maybe_save_model_state(
     *,
@@ -59,4 +59,3 @@ def maybe_save_model_state(
     _LOGGER.info("Saved model state at epoch %d to %s", epoch, checkpoint_filepath)
     if mlflow_run and not config.parallel:
         mlflow.log_artifact(str(checkpoint_filepath))
-
