@@ -56,11 +56,6 @@ def train(
 ) -> int:
     """Train the model for one epoch."""
     model.train()
-    model.to(device)
-
-    if reference_model:
-        reference_model.eval()
-        reference_model.to(device)
 
     data_len: int = (
         len(train_loader.sampler)  # type: ignore[arg-type]
@@ -79,11 +74,11 @@ def train(
 
         if reference_model:
             # We need to convert model output (Negative Log Likelyhood) into probabilities.
-            probabilities = torch.exp(output)
+            probs = torch.exp(output)
             with torch.no_grad():
                 reference_output = reference_model(data)
-                reference_probabilities = torch.exp(reference_output)
-            loss = F.cross_entropy(probabilities, reference_probabilities)
+                reference_probs = torch.exp(reference_output)
+            loss = F.cross_entropy(probs, reference_probs)
         else:
             loss = F.nll_loss(output, target)
 
@@ -114,7 +109,6 @@ def train(
 def test(*, rank: int, model, device, test_loader, aggregate_test_results=False) -> float:
     """Test the model on the test data."""
     model.eval()
-    model.to(device)
 
     data_len = len(test_loader.sampler) if test_loader.sampler else len(test_loader.dataset)
 
@@ -297,6 +291,12 @@ def _single_process_main(rank: int, config: Config) -> None:
         maybe_save_model_state(model=model, config=config, rank=rank, now=now, epoch=0)
 
         global_step = 0
+
+        model.to(device)
+
+        if reference_model:
+            reference_model.eval()
+            reference_model.to(device)
 
         for epoch in range(1, config.epochs + 1):
             global_step = train(
