@@ -66,10 +66,23 @@ class MLFlowConfig:
 
 
 @dataclass(frozen=True)
+class AdadeltaConfig:
+    """Configuration options for an Adadelta Optimizer"""
+
+    learning_rate: float = 0.01
+    weight_decay: float = 0.0
+
+@dataclass(frozen=True)
+class AdamWConfig:
+    """Configuration options for an Adadelta Optimizer"""
+
+    learning_rate: float = 0.01
+    weight_decay: float = 0.0
+
+@dataclass(frozen=True)
 class Config:
     """Configuration for training and evaluating the model."""
 
-    learning_rate: float = 0.01
     seed: int = 42
     epochs: int = 5
     gamma: float = 0.7
@@ -84,6 +97,7 @@ class Config:
     shuffle: bool = True
     log_level: LogLevel = LogLevel.INFO
     cnn_config: cnn.CNNConfig = field(default_factory=cnn.CNNConfig)
+    optimizer_config: AdadeltaConfig | AdamWConfig = field(default_factory=AdadeltaConfig)
     parallel: DDPConfig | FSDPConfig | None = None
     compile: CompileConfig | None = None
     verbose: bool = False
@@ -97,12 +111,6 @@ def create_arg_parser() -> argparse.ArgumentParser:
     )
 
     # Basic training arguments
-    parser.add_argument(
-        "--learning-rate",
-        type=float,
-        default=0.01,
-        help="Learning rate for training",
-    )
     parser.add_argument(
         "--seed",
         type=int,
@@ -213,6 +221,29 @@ def create_arg_parser() -> argparse.ArgumentParser:
         help="Dropout probability",
     )
 
+    optimizer_group = parser.add_argument_group("Optimizer")
+    optimizer_group.add_argument(
+        "--optimizer-type",
+        choices=[
+            "adadelta",
+            "adamw",
+        ],
+        default="adadelta",
+        help="Type of optimizer to use",
+    )
+    optimizer_group.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.01,
+        help="Learning rate for training",
+    )
+    optimizer_group.add_argument(
+        "--weight-decay",
+        type=float,
+        default=0.0,
+        help="Weight decay for training",
+    )
+
     # Parallel processing arguments
     parallel_group = parser.add_argument_group(
         "Parallel processing",
@@ -310,6 +341,21 @@ def args_to_config(args: argparse.Namespace) -> Config:
         input_size=28,  # MNIST image size
     )
 
+    # Create Optimizer config
+    match args.optimizer_type:
+        case "adadelta":
+            optimizer_config = AdadeltaConfig(
+                learning_rate=args.learning_rate,
+                weight_decay=args.weight_decay,
+            )
+        case "adamw":
+            optimizer_config = AdamWConfig(
+                learning_rate=args.learning_rate,
+                weight_decay=args.weight_decay,
+            )
+        case _:
+            raise NotImplementedError(f"Unsupported optimizer type {args.optimizer}")
+
     # Create Parallel Config
     parallel_config: DDPConfig | FSDPConfig | None = None
     if args.parallel_type != "none":
@@ -346,7 +392,6 @@ def args_to_config(args: argparse.Namespace) -> Config:
         )
 
     return Config(
-        learning_rate=args.learning_rate,
         seed=args.seed,
         epochs=args.epochs,
         gamma=args.gamma,
@@ -361,6 +406,7 @@ def args_to_config(args: argparse.Namespace) -> Config:
         shuffle=args.shuffle,
         log_level=LogLevel[args.log_level],
         cnn_config=cnn_config,
+        optimizer_config=optimizer_config,
         parallel=parallel_config,
         compile=compile_config,
         verbose=args.verbose,

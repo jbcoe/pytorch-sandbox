@@ -29,6 +29,8 @@ from torch.utils.data import DataLoader
 import xyz.pytorch.sandbox.mnist.model.cnn as cnn
 from xyz.pytorch.sandbox.mnist.train.checkpoint import maybe_save_model_state
 from xyz.pytorch.sandbox.mnist.train.config import (
+    AdadeltaConfig,
+    AdamWConfig,
     Config,
     DDPConfig,
     FSDPConfig,
@@ -181,7 +183,7 @@ def _maybe_load_reference_model(config: Config) -> torch.nn.Module | None:
 
 def _create_model_and_optimizer(config: Config) -> tuple[torch.nn.Module, torch.optim.Optimizer]:
     """Create the model and optimizer using the given config."""
-    model: torch.nn.Module = cnn.Net()  # config=config.cnn_config)
+    model: torch.nn.Module = cnn.Net(config=config.cnn_config)
 
     match config.parallel:
         case None:
@@ -198,7 +200,21 @@ def _create_model_and_optimizer(config: Config) -> tuple[torch.nn.Module, torch.
         case _:
             raise NotImplementedError(f"Parallelism kind {config.parallel} not implemented")
 
-    optimizer = optim.Adadelta(model.parameters(), lr=config.learning_rate)
+    match config.optimizer_config:
+        case AdadeltaConfig():
+            optimizer = optim.Adadelta(
+                model.parameters(),
+                lr=config.optimizer_config.learning_rate,
+                weight_decay=config.optimizer_config.weight_decay,
+            )
+        case AdamWConfig():
+            optimizer = optim.AdamW(
+                model.parameters(),
+                lr=config.optimizer_config.learning_rate,
+                weight_decay=config.optimizer_config.weight_decay,
+            )
+        case _:
+            raise NotImplementedError("Unsupported Optimizer config")
 
     if config.compile:
         model = torch.compile(
