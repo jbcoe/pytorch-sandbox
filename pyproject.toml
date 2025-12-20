@@ -19,7 +19,7 @@ dev = [
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",
     "ruff>=0.11.2",
-    "ty>=0.0.1a5",
+    "ty>=0.0.4",
 ]
 
 [project.scripts]
@@ -75,8 +75,7 @@ known-third-party = ["mlflow"]
 quote-style = "double"
 
 [tool.ty.rules]
-possibly-unbound-attribute = "ignore"
-unresolved-import = "ignore"
+possibly-missing-attribute = "ignore"
 
 [tool.coverage.run]
 concurrency = ["thread", "multiprocessing"]
