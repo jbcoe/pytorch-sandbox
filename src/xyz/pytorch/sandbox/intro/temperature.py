@@ -1,4 +1,13 @@
-"""A minimal ML model using PyTorch to learn the relationship between Celsius and Fahrenheit."""
+"""
+A minimal ML model using PyTorch to learn the relationship between Celsius and Fahrenheit.
+
+This can be run from the project root with:
+
+```
+uv run intro-temperature
+```
+
+"""
 
 import argparse
 import logging

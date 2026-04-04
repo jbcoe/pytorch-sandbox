@@ -24,7 +24,7 @@ dev = [
 [project.scripts]
 mnist-demo = "xyz.pytorch.sandbox.mnist.demo:main"
 mnist-train = "xyz.pytorch.sandbox.mnist.train:main"
-mnist-viewer = "xyz.pytorch.sandbox.data.loading:main"
+mnist-viewer = "xyz.pytorch.sandbox.mnist.data.loading:main"
 intro-temperature = "xyz.pytorch.sandbox.intro.temperature:main"
 
 [project.urls]
